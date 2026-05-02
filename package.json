@@ -2,18 +2,33 @@
   "name": "cipher",
   "version": "1.0.0",
   "description": "Privacy-focused messaging platform for desktop, mobile, and web",
-  "main": "app/public/main.js",
-  "homepage": "./",
-  "author": "Your Name",
+  "author": "jac moon <jamespuss23@gmail.com>",
   "license": "MIT",
+  "homepage": "https://github.com/yourusername/cipher",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/cipher"
+    "url": "https://github.com/yourusername/cipher.git"
   },
   "scripts": {
-    "dev": "echo 'Development setup coming soon'",
-    "test": "echo 'Testing coming soon'",
-    "build": "echo 'Build setup coming soon'"
+    "start": "electron app/ --dev",
+    "dev": "electron app/ --dev",
+    "test": "echo 'Tests coming soon'",
+    "build": "cd app && npm run build",
+    "build:win": "cd app && npm run build:win",
+    "build:mac": "cd app && npm run build:mac",
+    "build:linux": "cd app && npm run build:linux",
+    "security-audit": "npm audit",
+    "security-fix": "npm audit fix"
   },
-  "keywords": ["messaging", "privacy", "encryption"]
+  "keywords": [
+    "messaging",
+    "privacy",
+    "encryption",
+    "e2e",
+    "secure"
+  ],
+  "devDependencies": {
+    "electron": "^24.0.0",
+    "electron-builder": "^24.0.0"
+  }
 }
