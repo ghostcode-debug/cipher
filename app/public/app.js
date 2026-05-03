@@ -1,11 +1,30 @@
-﻿// app.js - Cipher Desktop App Logic
-// Main application functionality
+﻿// Rate Limiter class - DEFINE FIRST
+class RateLimiter {
+    constructor(maxRequests, timeWindowMs) {
+        this.maxRequests = maxRequests;
+        this.timeWindowMs = timeWindowMs;
+        this.requests = [];
+    }
+
+    isAllowed() {
+        const now = Date.now();
+        this.requests = this.requests.filter(time => now - time < this.timeWindowMs);
+        
+        if (this.requests.length < this.maxRequests) {
+            this.requests.push(now);
+            return true;
+        }
+        return false;
+    }
+}
+
+// app.js - Cipher Desktop App with Electron Integration
 
 let currentConversation = null;
 let conversations = {};
 let settings = {};
+let messageLimiter = new RateLimiter(10, 1000);
 
-// Sample conversations
 const sampleConversations = {
     alice: {
         name: 'Alice',
@@ -14,7 +33,7 @@ const sampleConversations = {
         messages: [
             { sender: 'alice', text: 'Hey! How are you?', time: '10:30 AM', status: 'read' },
             { sender: 'user', text: 'Hi Alice! Doing great!', time: '10:31 AM', status: 'delivered' },
-            { sender: 'alice', text: 'That\'s awesome!', time: '10:32 AM', status: 'read' },
+            { sender: 'alice', text: 'Thats awesome!', time: '10:32 AM', status: 'read' }
         ]
     },
     bob: {
@@ -22,8 +41,8 @@ const sampleConversations = {
         avatar: '👨',
         status: 'away',
         messages: [
-            { sender: 'user', text: 'Hey Bob, how\'s it going?', time: '9:15 AM', status: 'delivered' },
-            { sender: 'bob', text: 'Good! Busy with work', time: '9:45 AM', status: 'read' },
+            { sender: 'user', text: 'Hey Bob, hows it going?', time: '9:15 AM', status: 'delivered' },
+            { sender: 'bob', text: 'Good! Busy with work', time: '9:45 AM', status: 'read' }
         ]
     },
     carol: {
@@ -32,7 +51,7 @@ const sampleConversations = {
         status: 'offline',
         messages: [
             { sender: 'carol', text: 'Thanks for the help!', time: '8:00 AM', status: 'read' },
-            { sender: 'user', text: 'No problem!', time: '8:05 AM', status: 'delivered' },
+            { sender: 'user', text: 'No problem!', time: '8:05 AM', status: 'delivered' }
         ]
     }
 };
@@ -47,30 +66,27 @@ const defaultSettings = {
     notifications: true
 };
 
-// Initialize app
 document.addEventListener('DOMContentLoaded', function() {
+    loadAppVersion();
     loadSettings();
     loadConversations();
     initializeEventListeners();
-    renderConversationsList();
-    loadAppVersion();
     
-    console.log('🔐 Cipher Desktop App Loaded');
+    console.log('Cipher Desktop App Loaded');
 });
 
 function loadAppVersion() {
     if (window.electronAPI && window.electronAPI.getAppVersion) {
         window.electronAPI.getAppVersion().then(info => {
             document.getElementById('appVersion').textContent = 'v' + info.version;
+        }).catch(err => {
+            document.getElementById('appVersion').textContent = 'v1.0.0';
         });
     }
 }
 
 function initializeEventListeners() {
-    // Conversation selection
     document.getElementById('conversationsList').addEventListener('click', selectConversation);
-    
-    // Message sending
     document.getElementById('sendBtn').addEventListener('click', sendMessage);
     document.getElementById('messageInput').addEventListener('keypress', function(e) {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -78,16 +94,11 @@ function initializeEventListeners() {
             sendMessage();
         }
     });
-    
-    // Search
     document.getElementById('searchInput').addEventListener('input', searchConversations);
-    
-    // Privacy panel
     document.getElementById('settingsBtn').addEventListener('click', openPrivacyPanel);
     document.getElementById('closePanelBtn').addEventListener('click', closePrivacyPanel);
     document.getElementById('privacyOverlay').addEventListener('click', closePrivacyPanel);
     
-    // Privacy toggles
     document.getElementById('encryptionToggle').addEventListener('change', toggleSetting);
     document.getElementById('readReceiptsToggle').addEventListener('change', toggleSetting);
     document.getElementById('selfDestructToggle').addEventListener('change', toggleSetting);
@@ -96,36 +107,55 @@ function initializeEventListeners() {
     document.getElementById('previewToggle').addEventListener('change', toggleSetting);
     document.getElementById('notificationsToggle').addEventListener('change', toggleSetting);
     
-    // Action buttons
     document.getElementById('blockBtn').addEventListener('click', blockUser);
     document.getElementById('reportBtn').addEventListener('click', reportUser);
     document.getElementById('clearChatBtn').addEventListener('click', clearChat);
 }
 
-// CONVERSATION MANAGEMENT
 function loadConversations() {
-    const stored = localStorage.getItem('cipher_conversations');
-    if (stored) {
-        conversations = JSON.parse(stored);
+    if (window.electronAPI && window.electronAPI.loadConversations) {
+        window.electronAPI.loadConversations().then(result => {
+            if (result.success && result.data && Object.keys(result.data).length > 0) {
+                conversations = result.data;
+            } else {
+                conversations = JSON.parse(JSON.stringify(sampleConversations));
+                saveConversations();
+            }
+            renderConversationsList();
+        }).catch(err => {
+            conversations = JSON.parse(JSON.stringify(sampleConversations));
+            renderConversationsList();
+        });
     } else {
-        conversations = JSON.parse(JSON.stringify(sampleConversations));
-        saveConversations();
+        const stored = localStorage.getItem('cipher_conversations');
+        if (stored) {
+            conversations = JSON.parse(stored);
+        } else {
+            conversations = JSON.parse(JSON.stringify(sampleConversations));
+        }
+        renderConversationsList();
     }
 }
 
 function saveConversations() {
-    localStorage.setItem('cipher_conversations', JSON.stringify(conversations));
+    if (window.electronAPI && window.electronAPI.saveConversations) {
+        window.electronAPI.saveConversations(conversations).catch(err => {
+            localStorage.setItem('cipher_conversations', JSON.stringify(conversations));
+        });
+    } else {
+        localStorage.setItem('cipher_conversations', JSON.stringify(conversations));
+    }
 }
 
 function renderConversationsList() {
     const list = document.getElementById('conversationsList');
     list.innerHTML = '';
     
-    Object.keys(conversations).forEach(id => {
+    for (const id in conversations) {
         const conv = conversations[id];
         const item = createConversationItem(id, conv);
         list.appendChild(item);
-    });
+    }
 }
 
 function createConversationItem(id, conv) {
@@ -136,19 +166,18 @@ function createConversationItem(id, conv) {
     }
     div.dataset.id = id;
     
-    const lastMessage = conv.messages[conv.messages.length - 1];
+    const lastMessage = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
     const preview = lastMessage ? lastMessage.text.substring(0, 30) + '...' : 'No messages';
     const time = lastMessage ? lastMessage.time : '';
     
-    div.innerHTML = \
-        <div class="conversation-avatar">\</div>
-        <div class="conversation-info">
-            <div class="conversation-name">\</div>
-            <div class="conversation-preview">\</div>
-        </div>
-        <div class="conversation-time">\</div>
-    \;
+    const html = '<div class="conversation-avatar">' + conv.avatar + '</div>' +
+        '<div class="conversation-info">' +
+        '<div class="conversation-name">' + escapeHtml(conv.name) + '</div>' +
+        '<div class="conversation-preview">' + escapeHtml(preview) + '</div>' +
+        '</div>' +
+        '<div class="conversation-time">' + time + '</div>';
     
+    div.innerHTML = html;
     return div;
 }
 
@@ -170,6 +199,7 @@ function loadConversationView() {
     if (!currentConversation) return;
     
     const conv = conversations[currentConversation];
+    if (!conv) return;
     
     document.getElementById('chatTitle').textContent = conv.name;
     document.getElementById('userStatus').textContent = conv.status;
@@ -194,6 +224,11 @@ function renderMessages() {
     const container = document.getElementById('messagesContainer');
     const conv = conversations[currentConversation];
     
+    if (!conv || !conv.messages || conv.messages.length === 0) {
+        container.innerHTML = '<div class="no-conversation"><p>No messages yet. Start the conversation!</p></div>';
+        return;
+    }
+    
     container.innerHTML = '';
     
     conv.messages.forEach(msg => {
@@ -202,13 +237,10 @@ function renderMessages() {
         
         const status = msg.sender === 'user' ? ' ' + msg.status : '';
         
-        div.innerHTML = \
-            <div class="message-bubble">
-                <span>\</span>
-            </div>
-            <div class="message-time">\\</div>
-        \;
+        const html = '<div class="message-bubble"><span>' + escapeHtml(msg.text) + '</span></div>' +
+            '<div class="message-time">' + msg.time + status + '</div>';
         
+        div.innerHTML = html;
         container.appendChild(div);
     });
     
@@ -218,13 +250,26 @@ function renderMessages() {
 function sendMessage() {
     if (!currentConversation) return;
     
+    if (!messageLimiter.isAllowed()) {
+        alert('Too many messages! Please slow down.');
+        return;
+    }
+    
     const input = document.getElementById('messageInput');
     const text = input.value.trim();
     
     if (!text) return;
+    if (text.length > 5000) {
+        alert('Message too long (max 5000 characters)');
+        return;
+    }
     
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    
+    if (!conversations[currentConversation].messages) {
+        conversations[currentConversation].messages = [];
+    }
     
     conversations[currentConversation].messages.push({
         sender: 'user',
@@ -247,12 +292,14 @@ function simulateReply() {
     if (!currentConversation) return;
     
     const conv = conversations[currentConversation];
+    if (!conv) return;
+    
     const replies = [
         'That sounds great!',
         'I agree with you',
         'Let me think about that',
         'Sounds good to me!',
-        'I\'ll get back to you on that',
+        'Ill get back to you on that',
         'Thanks for letting me know',
         'Perfect!',
         'Absolutely!'
@@ -261,6 +308,10 @@ function simulateReply() {
     const reply = replies[Math.floor(Math.random() * replies.length)];
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    
+    if (!conv.messages) {
+        conv.messages = [];
+    }
     
     conv.messages.push({
         sender: currentConversation,
@@ -278,10 +329,13 @@ function searchConversations(e) {
     const items = document.querySelectorAll('.conversation-item');
     
     items.forEach(item => {
-        const name = item.querySelector('.conversation-name').textContent.toLowerCase();
-        const preview = item.querySelector('.conversation-preview').textContent.toLowerCase();
+        const name = item.querySelector('.conversation-name');
+        const preview = item.querySelector('.conversation-preview');
         
-        if (name.includes(query) || preview.includes(query)) {
+        const nameText = name ? name.textContent.toLowerCase() : '';
+        const previewText = preview ? preview.textContent.toLowerCase() : '';
+        
+        if (nameText.includes(query) || previewText.includes(query)) {
             item.style.display = '';
         } else {
             item.style.display = 'none';
@@ -289,31 +343,49 @@ function searchConversations(e) {
     });
 }
 
-// PRIVACY SETTINGS
 function loadSettings() {
-    const stored = localStorage.getItem('cipher_settings');
-    if (stored) {
-        settings = JSON.parse(stored);
+    if (window.electronAPI && window.electronAPI.loadSettings) {
+        window.electronAPI.loadSettings().then(result => {
+            if (result.success && result.data && Object.keys(result.data).length > 0) {
+                settings = result.data;
+            } else {
+                settings = JSON.parse(JSON.stringify(defaultSettings));
+                saveSettings();
+            }
+            applySettings();
+        }).catch(err => {
+            settings = JSON.parse(JSON.stringify(defaultSettings));
+            applySettings();
+        });
     } else {
-        settings = JSON.parse(JSON.stringify(defaultSettings));
-        saveSettings();
+        const stored = localStorage.getItem('cipher_settings');
+        if (stored) {
+            settings = JSON.parse(stored);
+        } else {
+            settings = JSON.parse(JSON.stringify(defaultSettings));
+        }
+        applySettings();
     }
-    
-    applySettings();
 }
 
 function saveSettings() {
-    localStorage.setItem('cipher_settings', JSON.stringify(settings));
+    if (window.electronAPI && window.electronAPI.saveSettings) {
+        window.electronAPI.saveSettings(settings).catch(err => {
+            localStorage.setItem('cipher_settings', JSON.stringify(settings));
+        });
+    } else {
+        localStorage.setItem('cipher_settings', JSON.stringify(settings));
+    }
 }
 
 function applySettings() {
-    document.getElementById('encryptionToggle').checked = settings.encryption;
-    document.getElementById('readReceiptsToggle').checked = settings.readReceipts;
-    document.getElementById('selfDestructToggle').checked = settings.selfDestruct;
-    document.getElementById('locationToggle').checked = settings.location;
-    document.getElementById('typingToggle').checked = settings.typing;
-    document.getElementById('previewToggle').checked = settings.preview;
-    document.getElementById('notificationsToggle').checked = settings.notifications;
+    document.getElementById('encryptionToggle').checked = settings.encryption || false;
+    document.getElementById('readReceiptsToggle').checked = settings.readReceipts !== false;
+    document.getElementById('selfDestructToggle').checked = settings.selfDestruct || false;
+    document.getElementById('locationToggle').checked = settings.location || false;
+    document.getElementById('typingToggle').checked = settings.typing !== false;
+    document.getElementById('previewToggle').checked = settings.preview !== false;
+    document.getElementById('notificationsToggle').checked = settings.notifications !== false;
 }
 
 function toggleSetting(e) {
@@ -327,7 +399,7 @@ function toggleSetting(e) {
         loadConversationView();
     }
     
-    console.log('Setting changed:', setting, '=', e.target.checked);
+    console.log('Setting changed: ' + setting + ' = ' + e.target.checked);
 }
 
 function openPrivacyPanel() {
@@ -340,13 +412,12 @@ function closePrivacyPanel() {
     document.getElementById('privacyOverlay').classList.remove('open');
 }
 
-// ACTION BUTTONS
 function blockUser() {
     if (!currentConversation) return;
     
     const conv = conversations[currentConversation];
-    if (confirm(\Block \?\)) {
-        alert(\\ has been blocked.\);
+    if (confirm('Block ' + conv.name + '?')) {
+        alert(conv.name + ' has been blocked.');
         closePrivacyPanel();
     }
 }
@@ -355,8 +426,8 @@ function reportUser() {
     if (!currentConversation) return;
     
     const conv = conversations[currentConversation];
-    if (confirm(\Report \?\)) {
-        alert(\Report submitted. Thank you!\);
+    if (confirm('Report ' + conv.name + '?')) {
+        alert('Report submitted. Thank you!');
         closePrivacyPanel();
     }
 }
@@ -365,7 +436,7 @@ function clearChat() {
     if (!currentConversation) return;
     
     const conv = conversations[currentConversation];
-    if (confirm(\Clear all messages with \?\)) {
+    if (confirm('Clear all messages with ' + conv.name + '?')) {
         conv.messages = [];
         saveConversations();
         renderMessages();
@@ -374,11 +445,11 @@ function clearChat() {
     }
 }
 
-// UTILITY
 function escapeHtml(text) {
+    if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 }
 
-console.log('✅ Cipher app.js loaded');
+console.log('Cipher app.js loaded successfully');
