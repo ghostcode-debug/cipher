@@ -1,88 +1,56 @@
-﻿// Rate Limiter class - DEFINE FIRST
-class RateLimiter {
-    constructor(maxRequests, timeWindowMs) {
-        this.maxRequests = maxRequests;
-        this.timeWindowMs = timeWindowMs;
-        this.requests = [];
-    }
-
-    isAllowed() {
-        const now = Date.now();
-        this.requests = this.requests.filter(time => now - time < this.timeWindowMs);
-        
-        if (this.requests.length < this.maxRequests) {
-            this.requests.push(now);
-            return true;
-        }
-        return false;
-    }
-}
-
-// app.js - Cipher Desktop App with Electron Integration
-
-let currentConversation = null;
-let conversations = {};
-let settings = {};
-let messageLimiter = new RateLimiter(10, 1000);
-
-const sampleConversations = {
-    alice: {
-        name: 'Alice',
-        avatar: '👩',
-        status: 'online',
-        messages: [
-            { sender: 'alice', text: 'Hey! How are you?', time: '10:30 AM', status: 'read' },
-            { sender: 'user', text: 'Hi Alice! Doing great!', time: '10:31 AM', status: 'delivered' },
-            { sender: 'alice', text: 'Thats awesome!', time: '10:32 AM', status: 'read' }
-        ]
-    },
-    bob: {
-        name: 'Bob',
-        avatar: '👨',
-        status: 'away',
-        messages: [
-            { sender: 'user', text: 'Hey Bob, hows it going?', time: '9:15 AM', status: 'delivered' },
-            { sender: 'bob', text: 'Good! Busy with work', time: '9:45 AM', status: 'read' }
-        ]
-    },
-    carol: {
-        name: 'Carol',
-        avatar: '👩‍🦰',
-        status: 'offline',
-        messages: [
-            { sender: 'carol', text: 'Thanks for the help!', time: '8:00 AM', status: 'read' },
-            { sender: 'user', text: 'No problem!', time: '8:05 AM', status: 'delivered' }
-        ]
-    }
-};
-
-const defaultSettings = {
-    encryption: false,
-    readReceipts: true,
-    selfDestruct: false,
-    location: false,
-    typing: true,
-    preview: true,
-    notifications: true
-};
-
-document.addEventListener('DOMContentLoaded', function() {
-    loadAppVersion();
-    loadSettings();
-    loadConversations();
-    initializeEventListeners();
-    
-    console.log('Cipher Desktop App Loaded');
+﻿document.addEventListener('DOMContentLoaded', function() {
+    console.log('App starting - showing login modal');
+    document.getElementById('loginContainer').classList.remove('hidden');
+    document.getElementById('mainContainer').classList.remove('visible');
 });
 
-function loadAppVersion() {
-    if (window.electronAPI && window.electronAPI.getAppVersion) {
-        window.electronAPI.getAppVersion().then(info => {
-            document.getElementById('appVersion').textContent = 'v' + info.version;
-        }).catch(err => {
-            document.getElementById('appVersion').textContent = 'v1.0.0';
-        });
+let currentConversation = null;
+let allUsers = [];
+let messageLimiter = new RateLimiter(10, 1000);
+
+function handleLogin() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+    
+    if (!email || !password) {
+        alert('Please fill in all fields');
+        return;
     }
+    
+    api.login(email, password).then(result => {
+        if (result.success) {
+            console.log('Login successful, showing main app');
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('mainContainer').classList.add('visible');
+            initializeApp();
+        } else {
+            alert('Login failed: ' + (result.error || 'Unknown error'));
+        }
+    });
+}
+
+function handleLogout() {
+    console.log('Logging out');
+    api.disconnect();
+    api.userId = null;
+    api.username = null;
+    document.getElementById('loginContainer').classList.remove('hidden');
+    document.getElementById('mainContainer').classList.remove('visible');
+    document.getElementById('conversationsList').innerHTML = '';
+    document.getElementById('loginEmail').value = 'alice@example.com';
+    document.getElementById('loginPassword').value = 'password123';
+}
+
+function initializeApp() {
+    console.log('Initializing app for user: ' + api.username);
+    loadAppVersion();
+    loadUsers();
+    initializeEventListeners();
+    setupServerMessageHandler();
+}
+
+function loadAppVersion() {
+    document.getElementById('appVersion').textContent = 'v1.0.0';
 }
 
 function initializeEventListeners() {
@@ -95,90 +63,45 @@ function initializeEventListeners() {
         }
     });
     document.getElementById('searchInput').addEventListener('input', searchConversations);
-    document.getElementById('settingsBtn').addEventListener('click', openPrivacyPanel);
-    document.getElementById('closePanelBtn').addEventListener('click', closePrivacyPanel);
-    document.getElementById('privacyOverlay').addEventListener('click', closePrivacyPanel);
-    
-    document.getElementById('encryptionToggle').addEventListener('change', toggleSetting);
-    document.getElementById('readReceiptsToggle').addEventListener('change', toggleSetting);
-    document.getElementById('selfDestructToggle').addEventListener('change', toggleSetting);
-    document.getElementById('locationToggle').addEventListener('change', toggleSetting);
-    document.getElementById('typingToggle').addEventListener('change', toggleSetting);
-    document.getElementById('previewToggle').addEventListener('change', toggleSetting);
-    document.getElementById('notificationsToggle').addEventListener('change', toggleSetting);
-    
-    document.getElementById('blockBtn').addEventListener('click', blockUser);
-    document.getElementById('reportBtn').addEventListener('click', reportUser);
-    document.getElementById('clearChatBtn').addEventListener('click', clearChat);
 }
 
-function loadConversations() {
-    if (window.electronAPI && window.electronAPI.loadConversations) {
-        window.electronAPI.loadConversations().then(result => {
-            if (result.success && result.data && Object.keys(result.data).length > 0) {
-                conversations = result.data;
-            } else {
-                conversations = JSON.parse(JSON.stringify(sampleConversations));
-                saveConversations();
-            }
-            renderConversationsList();
-        }).catch(err => {
-            conversations = JSON.parse(JSON.stringify(sampleConversations));
-            renderConversationsList();
-        });
-    } else {
-        const stored = localStorage.getItem('cipher_conversations');
-        if (stored) {
-            conversations = JSON.parse(stored);
-        } else {
-            conversations = JSON.parse(JSON.stringify(sampleConversations));
-        }
+function loadUsers() {
+    console.log('Loading users from server');
+    api.getUsers().then(users => {
+        console.log('Users loaded:', users.length);
+        allUsers = users.filter(u => u.id !== api.userId);
         renderConversationsList();
-    }
-}
-
-function saveConversations() {
-    if (window.electronAPI && window.electronAPI.saveConversations) {
-        window.electronAPI.saveConversations(conversations).catch(err => {
-            localStorage.setItem('cipher_conversations', JSON.stringify(conversations));
-        });
-    } else {
-        localStorage.setItem('cipher_conversations', JSON.stringify(conversations));
-    }
+    }).catch(err => {
+        console.error('Error loading users:', err);
+    });
 }
 
 function renderConversationsList() {
     const list = document.getElementById('conversationsList');
     list.innerHTML = '';
     
-    for (const id in conversations) {
-        const conv = conversations[id];
-        const item = createConversationItem(id, conv);
-        list.appendChild(item);
+    if (allUsers.length === 0) {
+        list.innerHTML = '<p style="padding: 20px; color: #999;">No users found</p>';
+        return;
     }
-}
-
-function createConversationItem(id, conv) {
-    const div = document.createElement('div');
-    div.className = 'conversation-item';
-    if (currentConversation === id) {
-        div.classList.add('active');
-    }
-    div.dataset.id = id;
     
-    const lastMessage = conv.messages && conv.messages.length > 0 ? conv.messages[conv.messages.length - 1] : null;
-    const preview = lastMessage ? lastMessage.text.substring(0, 30) + '...' : 'No messages';
-    const time = lastMessage ? lastMessage.time : '';
-    
-    const html = '<div class="conversation-avatar">' + conv.avatar + '</div>' +
-        '<div class="conversation-info">' +
-        '<div class="conversation-name">' + escapeHtml(conv.name) + '</div>' +
-        '<div class="conversation-preview">' + escapeHtml(preview) + '</div>' +
-        '</div>' +
-        '<div class="conversation-time">' + time + '</div>';
-    
-    div.innerHTML = html;
-    return div;
+    allUsers.forEach(user => {
+        const div = document.createElement('div');
+        div.className = 'conversation-item';
+        if (currentConversation === user.id) {
+            div.classList.add('active');
+        }
+        div.dataset.id = user.id;
+        
+        const html = '<div class="conversation-avatar">' + user.username.charAt(0).toUpperCase() + '</div>' +
+            '<div class="conversation-info">' +
+            '<div class="conversation-name">' + escapeHtml(user.username) + '</div>' +
+            '<div class="conversation-preview">Click to chat</div>' +
+            '</div>';
+        
+        div.innerHTML = html;
+        list.appendChild(div);
+    });
 }
 
 function selectConversation(e) {
@@ -186,59 +109,53 @@ function selectConversation(e) {
     if (!item) return;
     
     currentConversation = item.dataset.id;
-    
-    document.querySelectorAll('.conversation-item').forEach(i => {
-        i.classList.remove('active');
-    });
+    document.querySelectorAll('.conversation-item').forEach(i => i.classList.remove('active'));
     item.classList.add('active');
-    
     loadConversationView();
 }
 
 function loadConversationView() {
     if (!currentConversation) return;
     
-    const conv = conversations[currentConversation];
-    if (!conv) return;
+    const user = allUsers.find(u => u.id === currentConversation);
+    if (!user) return;
     
-    document.getElementById('chatTitle').textContent = conv.name;
-    document.getElementById('userStatus').textContent = conv.status;
-    document.getElementById('userStatus').className = 'user-status ' + conv.status;
-    
-    const badge = document.getElementById('encryptionBadge');
-    if (settings.encryption) {
-        badge.style.display = 'inline-flex';
-    } else {
-        badge.style.display = 'none';
-    }
-    
+    document.getElementById('chatTitle').textContent = user.username;
+    document.getElementById('userStatus').textContent = 'online';
     document.getElementById('messageInput').disabled = false;
     document.getElementById('sendBtn').disabled = false;
     
-    renderMessages();
+    loadMessages();
 }
 
-function renderMessages() {
-    if (!currentConversation) return;
+function loadMessages() {
+    if (!currentConversation || !api.userId) return;
     
+    api.getMessages(currentConversation).then(messages => {
+        renderMessages(messages);
+    }).catch(err => {
+        console.error('Error loading messages:', err);
+    });
+}
+
+function renderMessages(messages) {
     const container = document.getElementById('messagesContainer');
-    const conv = conversations[currentConversation];
     
-    if (!conv || !conv.messages || conv.messages.length === 0) {
+    if (!messages || messages.length === 0) {
         container.innerHTML = '<div class="no-conversation"><p>No messages yet. Start the conversation!</p></div>';
         return;
     }
     
     container.innerHTML = '';
-    
-    conv.messages.forEach(msg => {
+    messages.forEach(msg => {
         const div = document.createElement('div');
-        div.className = 'message ' + (msg.sender === 'user' ? 'sent' : 'received');
+        div.className = 'message ' + (msg.senderId === api.userId ? 'sent' : 'received');
         
-        const status = msg.sender === 'user' ? ' ' + msg.status : '';
+        const status = msg.senderId === api.userId ? ' ' + msg.status : '';
+        const time = msg.createdAt ? msg.createdAt.substring(11, 16) : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
         
         const html = '<div class="message-bubble"><span>' + escapeHtml(msg.text) + '</span></div>' +
-            '<div class="message-time">' + msg.time + status + '</div>';
+            '<div class="message-time">' + time + status + '</div>';
         
         div.innerHTML = html;
         container.appendChild(div);
@@ -248,7 +165,10 @@ function renderMessages() {
 }
 
 function sendMessage() {
-    if (!currentConversation) return;
+    if (!currentConversation || !api.userId) {
+        alert('Not logged in or no conversation selected');
+        return;
+    }
     
     if (!messageLimiter.isAllowed()) {
         alert('Too many messages! Please slow down.');
@@ -260,189 +180,35 @@ function sendMessage() {
     
     if (!text) return;
     if (text.length > 5000) {
-        alert('Message too long (max 5000 characters)');
+        alert('Message too long');
         return;
     }
     
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    if (!conversations[currentConversation].messages) {
-        conversations[currentConversation].messages = [];
-    }
-    
-    conversations[currentConversation].messages.push({
-        sender: 'user',
-        text: text,
-        time: time,
-        status: 'sent'
-    });
-    
-    saveConversations();
+    console.log('Sending message:', text);
+    api.sendMessageWebSocket(currentConversation, text);
     input.value = '';
     
-    setTimeout(() => {
-        simulateReply();
-    }, 1000);
-    
-    renderMessages();
+    setTimeout(() => loadMessages(), 500);
 }
 
-function simulateReply() {
-    if (!currentConversation) return;
-    
-    const conv = conversations[currentConversation];
-    if (!conv) return;
-    
-    const replies = [
-        'That sounds great!',
-        'I agree with you',
-        'Let me think about that',
-        'Sounds good to me!',
-        'Ill get back to you on that',
-        'Thanks for letting me know',
-        'Perfect!',
-        'Absolutely!'
-    ];
-    
-    const reply = replies[Math.floor(Math.random() * replies.length)];
-    const now = new Date();
-    const time = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    
-    if (!conv.messages) {
-        conv.messages = [];
-    }
-    
-    conv.messages.push({
-        sender: currentConversation,
-        text: reply,
-        time: time,
-        status: 'delivered'
-    });
-    
-    saveConversations();
-    renderMessages();
+function setupServerMessageHandler() {
+    window.onServerMessage = function(message) {
+        console.log('Server message received:', message.type);
+        if (message.type === 'message') {
+            if (currentConversation === message.senderId) {
+                loadMessages();
+            }
+        }
+    };
 }
 
 function searchConversations(e) {
     const query = e.target.value.toLowerCase();
-    const items = document.querySelectorAll('.conversation-item');
-    
-    items.forEach(item => {
+    document.querySelectorAll('.conversation-item').forEach(item => {
         const name = item.querySelector('.conversation-name');
-        const preview = item.querySelector('.conversation-preview');
-        
         const nameText = name ? name.textContent.toLowerCase() : '';
-        const previewText = preview ? preview.textContent.toLowerCase() : '';
-        
-        if (nameText.includes(query) || previewText.includes(query)) {
-            item.style.display = '';
-        } else {
-            item.style.display = 'none';
-        }
+        item.style.display = nameText.includes(query) ? '' : 'none';
     });
-}
-
-function loadSettings() {
-    if (window.electronAPI && window.electronAPI.loadSettings) {
-        window.electronAPI.loadSettings().then(result => {
-            if (result.success && result.data && Object.keys(result.data).length > 0) {
-                settings = result.data;
-            } else {
-                settings = JSON.parse(JSON.stringify(defaultSettings));
-                saveSettings();
-            }
-            applySettings();
-        }).catch(err => {
-            settings = JSON.parse(JSON.stringify(defaultSettings));
-            applySettings();
-        });
-    } else {
-        const stored = localStorage.getItem('cipher_settings');
-        if (stored) {
-            settings = JSON.parse(stored);
-        } else {
-            settings = JSON.parse(JSON.stringify(defaultSettings));
-        }
-        applySettings();
-    }
-}
-
-function saveSettings() {
-    if (window.electronAPI && window.electronAPI.saveSettings) {
-        window.electronAPI.saveSettings(settings).catch(err => {
-            localStorage.setItem('cipher_settings', JSON.stringify(settings));
-        });
-    } else {
-        localStorage.setItem('cipher_settings', JSON.stringify(settings));
-    }
-}
-
-function applySettings() {
-    document.getElementById('encryptionToggle').checked = settings.encryption || false;
-    document.getElementById('readReceiptsToggle').checked = settings.readReceipts !== false;
-    document.getElementById('selfDestructToggle').checked = settings.selfDestruct || false;
-    document.getElementById('locationToggle').checked = settings.location || false;
-    document.getElementById('typingToggle').checked = settings.typing !== false;
-    document.getElementById('previewToggle').checked = settings.preview !== false;
-    document.getElementById('notificationsToggle').checked = settings.notifications !== false;
-}
-
-function toggleSetting(e) {
-    const id = e.target.id;
-    const setting = id.replace('Toggle', '');
-    
-    settings[setting] = e.target.checked;
-    saveSettings();
-    
-    if (setting === 'encryption') {
-        loadConversationView();
-    }
-    
-    console.log('Setting changed: ' + setting + ' = ' + e.target.checked);
-}
-
-function openPrivacyPanel() {
-    document.getElementById('privacyPanel').classList.add('open');
-    document.getElementById('privacyOverlay').classList.add('open');
-}
-
-function closePrivacyPanel() {
-    document.getElementById('privacyPanel').classList.remove('open');
-    document.getElementById('privacyOverlay').classList.remove('open');
-}
-
-function blockUser() {
-    if (!currentConversation) return;
-    
-    const conv = conversations[currentConversation];
-    if (confirm('Block ' + conv.name + '?')) {
-        alert(conv.name + ' has been blocked.');
-        closePrivacyPanel();
-    }
-}
-
-function reportUser() {
-    if (!currentConversation) return;
-    
-    const conv = conversations[currentConversation];
-    if (confirm('Report ' + conv.name + '?')) {
-        alert('Report submitted. Thank you!');
-        closePrivacyPanel();
-    }
-}
-
-function clearChat() {
-    if (!currentConversation) return;
-    
-    const conv = conversations[currentConversation];
-    if (confirm('Clear all messages with ' + conv.name + '?')) {
-        conv.messages = [];
-        saveConversations();
-        renderMessages();
-        closePrivacyPanel();
-        alert('Chat history cleared.');
-    }
 }
 
 function escapeHtml(text) {
@@ -452,4 +218,4 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-console.log('Cipher app.js loaded successfully');
+console.log('Cipher app.js loaded');

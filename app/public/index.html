@@ -3,192 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔐 Cipher - Desktop App</title>
+    <title>Cipher - Private Messaging</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        #loginContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        #loginContainer.hidden {
+            display: none !important;
+        }
+        .login-box {
+            background: #1a1f26;
+            padding: 40px;
+            border-radius: 12px;
+            width: 400px;
+            border: 1px solid #2a3038;
+        }
+        .login-box h1 {
+            color: #2D7A8A;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: #2a3038;
+            border: 1px solid #3a4048;
+            border-radius: 8px;
+            color: #E8EAED;
+            box-sizing: border-box;
+        }
+        .login-box button {
+            width: 100%;
+            padding: 12px;
+            background: #2D7A8A;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .login-box button:hover {
+            background: #2a6f7f;
+        }
+        #mainContainer {
+            display: none !important;
+            width: 100%;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        #mainContainer.visible {
+            display: flex !important;
+        }
+    </style>
 </head>
-<body>
-    <div class="container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
+<body style="margin: 0; padding: 0; overflow: hidden;">
+    <!-- LOGIN MODAL -->
+    <div id="loginContainer">
+        <div class="login-box">
+            <h1>🔐 Cipher</h1>
+            <input type="email" id="loginEmail" placeholder="Email" value="alice@example.com">
+            <input type="password" id="loginPassword" placeholder="Password" value="password123">
+            <button onclick="handleLogin()">Login</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="mainContainer" style="display: none; width: 100%; height: 100vh; flex-direction: row;">
+        <div class="sidebar">
             <div class="sidebar-header">
                 <h1 class="logo">🔐 Cipher</h1>
-                <p class="version" id="appVersion">Loading...</p>
+                <p class="version" id="appVersion">v1.0.0</p>
             </div>
-            
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search conversations..." class="search-input">
-            </div>
-            
-            <div class="conversations-list" id="conversationsList">
-            </div>
-            
-            <button class="settings-button" id="settingsBtn">⚙️ Privacy Settings</button>
-        </aside>
 
-        <!-- Main Chat Area -->
-        <main class="chat-container">
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search conversations...">
+            </div>
+
+            <div class="conversations-list" id="conversationsList"></div>
+
+            <button class="settings-button" id="settingsBtn">⚙️ Privacy Settings</button>
+            <button class="settings-button" style="background: #d9534f; margin-top: 10px;" onclick="handleLogout()">🚪 Logout</button>
+        </div>
+
+        <div class="chat-container">
             <div class="chat-header">
                 <div class="header-info">
                     <h2 class="chat-title" id="chatTitle">Select a conversation</h2>
-                    <span class="user-status" id="userStatus">offline</span>
-                </div>
-                <div class="header-actions">
-                    <span class="encryption-badge" id="encryptionBadge" style="display: none;">🔒 Encrypted</span>
-                    <button class="menu-button">⋮</button>
+                    <p class="user-status" id="userStatus">Offline</p>
                 </div>
             </div>
 
             <div class="messages-container" id="messagesContainer">
-                <div class="no-conversation">
-                    <p>Select a conversation to start messaging</p>
-                </div>
+                <div class="no-conversation"><p>Select a conversation to start messaging</p></div>
             </div>
 
             <div class="input-area">
-                <input type="text" id="messageInput" placeholder="Type a message..." class="message-input" disabled>
-                <button class="send-button" id="sendBtn" disabled>Send</button>
-            </div>
-        </main>
-
-        <!-- Privacy Panel -->
-        <div class="privacy-panel" id="privacyPanel">
-            <div class="privacy-header">
-                <h3>Privacy Settings</h3>
-                <button class="close-button" id="closePanelBtn">✕</button>
-            </div>
-
-            <div class="privacy-content">
-                <!-- Encryption -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">🔒</span>
-                        <div class="setting-text">
-                            <span class="setting-name">End-to-end Encryption</span>
-                            <span class="setting-desc">Encrypt all messages</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="encryptionToggle" class="toggle-input">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Read Receipts -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">👁️</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Read Receipts</span>
-                            <span class="setting-desc">Show when messages are read</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="readReceiptsToggle" class="toggle-input" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Self-Destruct -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">🌪️</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Self-Destruct Messages</span>
-                            <span class="setting-desc">Messages auto-delete after 24h</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="selfDestructToggle" class="toggle-input">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Location Sharing -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">📍</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Location Sharing</span>
-                            <span class="setting-desc">Share your location</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="locationToggle" class="toggle-input">
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Typing Indicators -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">✍️</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Typing Indicators</span>
-                            <span class="setting-desc">Show when you're typing</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="typingToggle" class="toggle-input" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Message Preview -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">👁️‍🗨️</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Message Previews</span>
-                            <span class="setting-desc">Show preview in notifications</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="previewToggle" class="toggle-input" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <!-- Notifications -->
-                <div class="privacy-setting">
-                    <div class="setting-label">
-                        <span class="setting-icon">🔔</span>
-                        <div class="setting-text">
-                            <span class="setting-name">Notifications</span>
-                            <span class="setting-desc">Receive notifications</span>
-                        </div>
-                    </div>
-                    <label class="toggle-switch">
-                        <input type="checkbox" id="notificationsToggle" class="toggle-input" checked>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-
-                <div class="privacy-divider"></div>
-
-                <!-- Block User -->
-                <button class="privacy-action-button danger" id="blockBtn">
-                    <span class="button-icon">🚫</span>
-                    <span class="button-text">Block User</span>
-                </button>
-
-                <!-- Report User -->
-                <button class="privacy-action-button warning" id="reportBtn">
-                    <span class="button-icon">⚠️</span>
-                    <span class="button-text">Report User</span>
-                </button>
-
-                <!-- Clear Chat -->
-                <button class="privacy-action-button danger" id="clearChatBtn">
-                    <span class="button-icon">🗑️</span>
-                    <span class="button-text">Clear Chat History</span>
-                </button>
+                <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
+                <button id="sendBtn" class="send-button" disabled>Send</button>
             </div>
         </div>
-
-        <!-- Privacy Panel Overlay -->
-        <div class="privacy-overlay" id="privacyOverlay"></div>
     </div>
 
+    <script src="api.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
