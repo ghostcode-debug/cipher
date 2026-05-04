@@ -1,16 +1,13 @@
-﻿// main.js - Electron Main Process with IPC Handlers
-
-const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron');
+﻿const { app, BrowserWindow, ipcMain } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 
 let mainWindow;
 let userData = {};
 
-// User data path
 const userDataPath = path.join(app.getPath('userData'), 'cipher-data.json');
 
-// Create the browser window
 function createWindow() {
     mainWindow = new BrowserWindow({
         width: 1200,
@@ -36,10 +33,28 @@ function createWindow() {
     });
 }
 
-// App event handlers
+function setupAutoUpdater() {
+    autoUpdater.checkForUpdatesAndNotify();
+    
+    autoUpdater.on('update-available', () => {
+        console.log('Update available');
+        mainWindow.webContents.send('update-available');
+    });
+    
+    autoUpdater.on('update-downloaded', () => {
+        console.log('Update downloaded');
+        mainWindow.webContents.send('update-downloaded');
+    });
+    
+    autoUpdater.on('error', (err) => {
+        console.error('Update error:', err);
+    });
+}
+
 app.on('ready', () => {
     loadUserData();
     createWindow();
+    setupAutoUpdater();
 });
 
 app.on('window-all-closed', () => {
@@ -54,10 +69,7 @@ app.on('activate', () => {
     }
 });
 
-// =============================================
-// USER DATA MANAGEMENT
-// =============================================
-
+// DATABASE FUNCTIONS
 function loadUserData() {
     try {
         if (fs.existsSync(userDataPath)) {
@@ -85,11 +97,7 @@ function saveUserData() {
     }
 }
 
-// =============================================
 // IPC HANDLERS
-// =============================================
-
-// Get app version and info
 ipcMain.handle('get-app-version', async () => {
     return {
         version: app.getVersion(),
@@ -97,12 +105,10 @@ ipcMain.handle('get-app-version', async () => {
     };
 });
 
-// Get user data path
 ipcMain.handle('get-user-data-path', async () => {
     return app.getPath('userData');
 });
 
-// Save conversations
 ipcMain.handle('save-conversations', async (event, conversations) => {
     try {
         userData.conversations = conversations;
@@ -114,7 +120,6 @@ ipcMain.handle('save-conversations', async (event, conversations) => {
     }
 });
 
-// Load conversations
 ipcMain.handle('load-conversations', async () => {
     try {
         return { success: true, data: userData.conversations };
@@ -124,7 +129,6 @@ ipcMain.handle('load-conversations', async () => {
     }
 });
 
-// Save settings
 ipcMain.handle('save-settings', async (event, settings) => {
     try {
         userData.settings = settings;
@@ -136,7 +140,6 @@ ipcMain.handle('save-settings', async (event, settings) => {
     }
 });
 
-// Load settings
 ipcMain.handle('load-settings', async () => {
     try {
         return { success: true, data: userData.settings };
@@ -146,41 +149,12 @@ ipcMain.handle('load-settings', async () => {
     }
 });
 
-// Delete message
-ipcMain.handle('delete-message', async (event, conversationId, messageIndex) => {
-    try {
-        if (userData.conversations[conversationId]) {
-            userData.conversations[conversationId].messages.splice(messageIndex, 1);
-            saveUserData();
-            return { success: true };
-        }
-        return { success: false, error: 'Conversation not found' };
-    } catch (error) {
-        console.error('Delete error:', error);
-        return { success: false, error: error.message };
-    }
-});
-
-// Clear conversation
-ipcMain.handle('clear-conversation', async (event, conversationId) => {
-    try {
-        if (userData.conversations[conversationId]) {
-            userData.conversations[conversationId].messages = [];
-            saveUserData();
-            return { success: true };
-        }
-        return { success: false, error: 'Conversation not found' };
-    } catch (error) {
-        console.error('Clear error:', error);
-        return { success: false, error: error.message };
-    }
-});
-
-// Quit app
 ipcMain.handle('quit-app', async () => {
     app.quit();
 });
 
-console.log('🔐 Cipher Desktop App - Main Process Started');
-console.log('Platform:', process.platform);
-console.log('User Data Path:', userDataPath);
+ipcMain.handle('restart-app', async () => {
+    autoUpdater.quitAndInstall();
+});
+
+console.log('Cipher Desktop App - Main Process Started');

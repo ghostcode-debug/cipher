@@ -1,4 +1,4 @@
-﻿// RateLimiter class
+// RateLimiter class
 class RateLimiter {
     constructor(maxRequests, timeWindowMs) {
         this.maxRequests = maxRequests;
@@ -20,7 +20,7 @@ class RateLimiter {
 
 // API Client
 class CipherAPI {
-    constructor(serverUrl = 'http://localhost:3000') {
+    constructor(serverUrl = 'http://localhost:5000') {
         this.serverUrl = serverUrl;
         this.userId = null;
         this.username = null;
@@ -142,4 +142,4 @@ class CipherAPI {
     }
 }
 
-const api = new CipherAPI('http://localhost:3000');
+const api = new CipherAPI('http://localhost:5000');

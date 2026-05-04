@@ -1,7 +1,7 @@
 {
   "name": "cipher-app",
-  "version": "1.0.0",
-  "description": "Cipher Desktop Application",
+  "version": "1.0.1",
+  "description": "Cipher Desktop Application - Private Messaging",
   "main": "main.js",
   "author": "jac moon",
   "license": "MIT",
@@ -20,14 +20,41 @@
       "main.js",
       "preload.js",
       "public/**/*",
+      "node_modules/electron-updater/**/*",
       "node_modules/**/*"
-    ]
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "yourusername",
+      "repo": "cipher"
+    }
   },
   "devDependencies": {
     "electron": "^24.0.0",
-    "electron-builder": "^24.0.0"
+    "electron-builder": "^24.0.0",
+    "electron-updater": "^6.1.0"
   },
   "dependencies": {
-    "electron-store": "^8.0.0"
+    "electron-store": "^8.0.0",
+    "electron-updater": "^6.1.0"
   }
 }

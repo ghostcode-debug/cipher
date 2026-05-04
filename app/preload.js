@@ -1,39 +1,21 @@
-﻿// preload.js - IPC Bridge
-// Safely exposes main process functions to renderer
+﻿const { contextBridge, ipcRenderer } = require('electron');
 
-const { contextBridge, ipcRenderer } = require('electron');
-
-// Expose safe APIs to renderer process
 contextBridge.exposeInMainWorld('electronAPI', {
     // App Functions
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
     getUserDataPath: () => ipcRenderer.invoke('get-user-data-path'),
     quitApp: () => ipcRenderer.invoke('quit-app'),
+    restartApp: () => ipcRenderer.invoke('restart-app'),
     
-    // File Functions
-    openFileDialog: () => ipcRenderer.invoke('open-file-dialog'),
+    // Data Management
+    saveConversations: (data) => ipcRenderer.invoke('save-conversations', data),
+    loadConversations: () => ipcRenderer.invoke('load-conversations'),
+    saveSettings: (data) => ipcRenderer.invoke('save-settings', data),
+    loadSettings: () => ipcRenderer.invoke('load-settings'),
     
-    // Message passing
-    send: (channel, data) => {
-        const validChannels = ['save-message', 'load-messages', 'delete-messages'];
-        if (validChannels.includes(channel)) {
-            ipcRenderer.send(channel, data);
-        }
-    },
-    
-    receive: (channel, func) => {
-        const validChannels = ['message-received', 'settings-changed'];
-        if (validChannels.includes(channel)) {
-            ipcRenderer.on(channel, (event, ...args) => func(...args));
-        }
-    },
-    
-    invoke: (channel, data) => {
-        const validChannels = ['save-data', 'load-data', 'validate-input'];
-        if (validChannels.includes(channel)) {
-            return ipcRenderer.invoke(channel, data);
-        }
-    }
+    // Update Events
+    onUpdateAvailable: (callback) => ipcRenderer.on('update-available', callback),
+    onUpdateDownloaded: (callback) => ipcRenderer.on('update-downloaded', callback)
 });
 
 console.log('✅ Preload script loaded - IPC bridge ready');

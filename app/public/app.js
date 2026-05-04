@@ -2,11 +2,44 @@
     console.log('App starting - showing login modal');
     document.getElementById('loginContainer').classList.remove('hidden');
     document.getElementById('mainContainer').classList.remove('visible');
+    
+    // Setup update handlers
+    setupUpdateHandlers();
 });
 
 let currentConversation = null;
 let allUsers = [];
 let messageLimiter = new RateLimiter(10, 1000);
+
+function setupUpdateHandlers() {
+    if (window.electronAPI) {
+        window.electronAPI.onUpdateAvailable(() => {
+            console.log('Update available - downloading...');
+            showNotification('Update Available', 'A new version is being downloaded. You will be notified when ready to install.');
+        });
+        
+        window.electronAPI.onUpdateDownloaded(() => {
+            console.log('Update downloaded - ready to install');
+            const response = confirm('Update downloaded! Restart now to install?');
+            if (response) {
+                window.electronAPI.restartApp();
+            }
+        });
+    }
+}
+
+function showNotification(title, message) {
+    const notification = document.createElement('div');
+    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2D7A8A; color: white; padding: 15px 20px; border-radius: 8px; z-index: 9999; max-width: 400px;';
+    notification.innerHTML = '<strong>' + title + '</strong><br>' + message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
 
 function handleLogin() {
     const email = document.getElementById('loginEmail').value;
@@ -50,7 +83,11 @@ function initializeApp() {
 }
 
 function loadAppVersion() {
-    document.getElementById('appVersion').textContent = 'v1.0.0';
+    if (window.electronAPI) {
+        window.electronAPI.getAppVersion().then(info => {
+            document.getElementById('appVersion').textContent = 'v' + info.version;
+        });
+    }
 }
 
 function initializeEventListeners() {
@@ -218,4 +255,4 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-console.log('Cipher app.js loaded');
+console.log('Cipher app.js loaded with auto-update support');
