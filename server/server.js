@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const sqlite3 = require('sqlite3').verbose();
@@ -191,9 +191,9 @@ app.get('/api/health', (req, res) => {
     res.json({ status: 'Server is running' });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, () => {
+server.listen(PORT, '127.0.0.1', () => {
     console.log('');
     console.log('Cipher Messaging Server');
     console.log('======================');
@@ -201,3 +201,4 @@ server.listen(PORT, () => {
     console.log('WebSocket running on: ws://localhost:' + PORT);
     console.log('');
 });
+
