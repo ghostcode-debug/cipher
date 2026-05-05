@@ -20,7 +20,7 @@ class RateLimiter {
 
 // API Client
 class CipherAPI {
-    constructor(serverUrl = 'http://localhost:5000') {
+    constructor(serverUrl = 'https://cf012452-126b-48f8-9e73-d8c1ef3c442a-00-1a5u8zblel459.kirk.replit.dev') {
         this.serverUrl = serverUrl;
         this.userId = null;
         this.username = null;
@@ -142,4 +142,4 @@ class CipherAPI {
     }
 }
 
-const api = new CipherAPI('http://localhost:5000');
+const api = new CipherAPI('https://cf012452-126b-48f8-9e73-d8c1ef3c442a-00-1a5u8zblel459.kirk.replit.dev');
