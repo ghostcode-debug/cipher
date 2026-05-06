@@ -55,6 +55,8 @@
   },
   "dependencies": {
     "electron-store": "^8.0.0",
-    "electron-updater": "^6.1.0"
+    "electron-updater": "^6.1.0",
+    "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1"
   }
 }

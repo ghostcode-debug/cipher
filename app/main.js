@@ -1,4 +1,4 @@
-﻿const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -10,6 +10,8 @@ const userDataPath = path.join(app.getPath('userData'), 'cipher-data.json');
 
 function createWindow() {
     mainWindow = new BrowserWindow({
+        frame: true,
+        
         width: 1200,
         height: 800,
         minWidth: 800,
@@ -25,8 +27,9 @@ function createWindow() {
         }
     });
 
+    mainWindow.removeMenu();
     mainWindow.loadFile(path.join(__dirname, 'public/index.html'));
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools(); // Disabled in production
 
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -147,6 +150,22 @@ ipcMain.handle('load-settings', async () => {
         console.error('Settings load error:', error);
         return { success: false, error: error.message };
     }
+});
+
+ipcMain.handle('minimize-window', () => {
+    mainWindow.minimize();
+});
+
+ipcMain.handle('maximize-window', () => {
+    if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+    } else {
+        mainWindow.maximize();
+    }
+});
+
+ipcMain.handle('close-window', () => {
+    mainWindow.close();
 });
 
 ipcMain.handle('quit-app', async () => {

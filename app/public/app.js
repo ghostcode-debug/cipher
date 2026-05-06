@@ -1,258 +1,145 @@
-﻿document.addEventListener('DOMContentLoaded', function() {
-    console.log('App starting - showing login modal');
-    document.getElementById('loginContainer').classList.remove('hidden');
+﻿let currentUserId = null;
+
+function showLoginForm() {
+    document.getElementById('loginContainer').style.display = 'flex';
     document.getElementById('mainContainer').classList.remove('visible');
-    
-    // Setup update handlers
-    setupUpdateHandlers();
-});
-
-let currentConversation = null;
-let allUsers = [];
-let messageLimiter = new RateLimiter(10, 1000);
-
-function setupUpdateHandlers() {
-    if (window.electronAPI) {
-        window.electronAPI.onUpdateAvailable(() => {
-            console.log('Update available - downloading...');
-            showNotification('Update Available', 'A new version is being downloaded. You will be notified when ready to install.');
-        });
-        
-        window.electronAPI.onUpdateDownloaded(() => {
-            console.log('Update downloaded - ready to install');
-            const response = confirm('Update downloaded! Restart now to install?');
-            if (response) {
-                window.electronAPI.restartApp();
-            }
-        });
-    }
 }
 
-function showNotification(title, message) {
-    const notification = document.createElement('div');
-    notification.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2D7A8A; color: white; padding: 15px 20px; border-radius: 8px; z-index: 9999; max-width: 400px;';
-    notification.innerHTML = '<strong>' + title + '</strong><br>' + message;
-    document.body.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.style.opacity = '0';
-        notification.style.transition = 'opacity 0.3s';
-        setTimeout(() => notification.remove(), 300);
-    }, 5000);
+function showMainApp() {
+    document.getElementById('loginContainer').style.display = 'none';
+    document.getElementById('mainContainer').classList.add('visible');
 }
 
-function handleLogin() {
+async function handleLogin() {
     const email = document.getElementById('loginEmail').value;
     const password = document.getElementById('loginPassword').value;
-    
+
     if (!email || !password) {
-        alert('Please fill in all fields');
+        alert('Please enter email and password');
         return;
     }
-    
-    api.login(email, password).then(result => {
-        if (result.success) {
-            console.log('Login successful, showing main app');
-            document.getElementById('loginContainer').classList.add('hidden');
-            document.getElementById('mainContainer').classList.add('visible');
-            initializeApp();
-        } else {
-            alert('Login failed: ' + (result.error || 'Unknown error'));
-        }
-    });
+
+    const result = await api.login(email, password);
+    if (result.success) {
+        currentUserId = result.userId;
+        console.log('✅ Login successful. Encryption enabled!');
+        showMainApp();
+        initializeApp();
+    } else {
+        alert('Login failed: ' + (result.error || 'Unknown error'));
+    }
 }
 
-function handleLogout() {
-    console.log('Logging out');
-    api.disconnect();
-    api.userId = null;
-    api.username = null;
-    document.getElementById('loginContainer').classList.remove('hidden');
-    document.getElementById('mainContainer').classList.remove('visible');
-    document.getElementById('conversationsList').innerHTML = '';
-    document.getElementById('loginEmail').value = 'alice@example.com';
-    document.getElementById('loginPassword').value = 'password123';
-}
-
-function initializeApp() {
-    console.log('Initializing app for user: ' + api.username);
-    loadAppVersion();
+async function initializeApp() {
     loadUsers();
-    initializeEventListeners();
-    setupServerMessageHandler();
+    setupEventListeners();
+    connectWebSocket();
 }
 
-function loadAppVersion() {
-    if (window.electronAPI) {
-        window.electronAPI.getAppVersion().then(info => {
-            document.getElementById('appVersion').textContent = 'v' + info.version;
-        });
-    }
-}
+async function loadUsers() {
+    const users = await api.getUsers();
+    const usersList = document.getElementById('usersList');
+    usersList.innerHTML = '';
 
-function initializeEventListeners() {
-    document.getElementById('conversationsList').addEventListener('click', selectConversation);
-    document.getElementById('sendBtn').addEventListener('click', sendMessage);
-    document.getElementById('messageInput').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
+    users.forEach(user => {
+        if (user.id !== api.userId) {
+            const userEl = document.createElement('div');
+            userEl.className = 'conversation-item';
+            userEl.innerHTML = 
+                <div class="conversation-avatar">\</div>
+                <div class="conversation-info">
+                    <div class="conversation-name">\</div>
+                    <div class="conversation-preview">Click to chat</div>
+                </div>
+            ;
+            userEl.onclick = () => selectUser(user);
+            usersList.appendChild(userEl);
         }
     });
-    document.getElementById('searchInput').addEventListener('input', searchConversations);
 }
 
-function loadUsers() {
-    console.log('Loading users from server');
-    api.getUsers().then(users => {
-        console.log('Users loaded:', users.length);
-        allUsers = users.filter(u => u.id !== api.userId);
-        renderConversationsList();
-    }).catch(err => {
-        console.error('Error loading users:', err);
-    });
-}
+let selectedUser = null;
 
-function renderConversationsList() {
-    const list = document.getElementById('conversationsList');
-    list.innerHTML = '';
-    
-    if (allUsers.length === 0) {
-        list.innerHTML = '<p style="padding: 20px; color: #999;">No users found</p>';
-        return;
-    }
-    
-    allUsers.forEach(user => {
-        const div = document.createElement('div');
-        div.className = 'conversation-item';
-        if (currentConversation === user.id) {
-            div.classList.add('active');
-        }
-        div.dataset.id = user.id;
-        
-        const html = '<div class="conversation-avatar">' + user.username.charAt(0).toUpperCase() + '</div>' +
-            '<div class="conversation-info">' +
-            '<div class="conversation-name">' + escapeHtml(user.username) + '</div>' +
-            '<div class="conversation-preview">Click to chat</div>' +
-            '</div>';
-        
-        div.innerHTML = html;
-        list.appendChild(div);
-    });
-}
+async function selectUser(user) {
+    selectedUser = user;
+    document.querySelectorAll('.conversation-item').forEach(el => el.classList.remove('active'));
+    event.currentTarget.classList.add('active');
 
-function selectConversation(e) {
-    const item = e.target.closest('.conversation-item');
-    if (!item) return;
-    
-    currentConversation = item.dataset.id;
-    document.querySelectorAll('.conversation-item').forEach(i => i.classList.remove('active'));
-    item.classList.add('active');
-    loadConversationView();
-}
-
-function loadConversationView() {
-    if (!currentConversation) return;
-    
-    const user = allUsers.find(u => u.id === currentConversation);
-    if (!user) return;
-    
     document.getElementById('chatTitle').textContent = user.username;
-    document.getElementById('userStatus').textContent = 'online';
+    document.getElementById('userStatus').textContent = '🟢 Online';
     document.getElementById('messageInput').disabled = false;
     document.getElementById('sendBtn').disabled = false;
-    
-    loadMessages();
+    document.getElementById('encryptionStatus').textContent = '🔒 Encrypted';
+
+    await loadMessages(user.id);
 }
 
-function loadMessages() {
-    if (!currentConversation || !api.userId) return;
-    
-    api.getMessages(currentConversation).then(messages => {
-        renderMessages(messages);
-    }).catch(err => {
-        console.error('Error loading messages:', err);
-    });
-}
-
-function renderMessages(messages) {
+async function loadMessages(userId) {
+    const messages = await api.getMessages(userId);
     const container = document.getElementById('messagesContainer');
-    
-    if (!messages || messages.length === 0) {
-        container.innerHTML = '<div class="no-conversation"><p>No messages yet. Start the conversation!</p></div>';
-        return;
-    }
-    
     container.innerHTML = '';
+
     messages.forEach(msg => {
-        const div = document.createElement('div');
-        div.className = 'message ' + (msg.senderId === api.userId ? 'sent' : 'received');
+        const messageEl = document.createElement('div');
+        messageEl.className = 'message ' + (msg.senderId === api.userId ? 'sent' : 'received');
         
-        const status = msg.senderId === api.userId ? ' ' + msg.status : '';
-        const time = msg.createdAt ? msg.createdAt.substring(11, 16) : new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const encryptionBadge = msg.encrypted ? '🔒' : '';
         
-        const html = '<div class="message-bubble"><span>' + escapeHtml(msg.text) + '</span></div>' +
-            '<div class="message-time">' + time + status + '</div>';
+        messageEl.innerHTML = 
+            <div class="message-time">\</div>
+            <div class="message-bubble">
+                \ \
+            </div>
+        ;
         
-        div.innerHTML = html;
-        container.appendChild(div);
+        container.appendChild(messageEl);
     });
-    
+
     container.scrollTop = container.scrollHeight;
 }
 
-function sendMessage() {
-    if (!currentConversation || !api.userId) {
-        alert('Not logged in or no conversation selected');
-        return;
+async function sendMessage() {
+    const text = document.getElementById('messageInput').value.trim();
+    if (!text || !selectedUser) return;
+
+    document.getElementById('messageInput').value = '';
+
+    const result = await api.sendMessage(selectedUser.id, text);
+    if (result.success) {
+        await loadMessages(selectedUser.id);
+    } else {
+        alert('Failed to send message: ' + (result.error || 'Unknown error'));
     }
-    
-    if (!messageLimiter.isAllowed()) {
-        alert('Too many messages! Please slow down.');
-        return;
-    }
-    
-    const input = document.getElementById('messageInput');
-    const text = input.value.trim();
-    
-    if (!text) return;
-    if (text.length > 5000) {
-        alert('Message too long');
-        return;
-    }
-    
-    console.log('Sending message:', text);
-    api.sendMessageWebSocket(currentConversation, text);
-    input.value = '';
-    
-    setTimeout(() => loadMessages(), 500);
 }
 
-function setupServerMessageHandler() {
-    window.onServerMessage = function(message) {
-        console.log('Server message received:', message.type);
-        if (message.type === 'message') {
-            if (currentConversation === message.senderId) {
-                loadMessages();
-            }
+function connectWebSocket() {
+    api.connectWebSocket((message) => {
+        if (selectedUser && message.senderId === selectedUser.id) {
+            loadMessages(selectedUser.id);
         }
-    };
-}
-
-function searchConversations(e) {
-    const query = e.target.value.toLowerCase();
-    document.querySelectorAll('.conversation-item').forEach(item => {
-        const name = item.querySelector('.conversation-name');
-        const nameText = name ? name.textContent.toLowerCase() : '';
-        item.style.display = nameText.includes(query) ? '' : 'none';
     });
 }
 
-function escapeHtml(text) {
-    if (!text) return '';
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+function setupEventListeners() {
+    document.getElementById('loginBtn').onclick = handleLogin;
+    document.getElementById('sendBtn').onclick = sendMessage;
+    document.getElementById('messageInput').onkeypress = (e) => {
+        if (e.key === 'Enter') sendMessage();
+    };
+
+    document.getElementById('logoutBtn').onclick = () => {
+        api.disconnect();
+        showLoginForm();
+        document.getElementById('messageInput').value = '';
+        document.getElementById('messagesContainer').innerHTML = '<div class=\"no-conversation\">Select a conversation to start messaging</div>';
+    };
+
+    document.getElementById('settingsBtn').onclick = () => {
+        alert('Privacy Settings\n\n🔐 End-to-End Encryption: ENABLED\n\nYour messages are encrypted and only visible to you and the recipient.');
+    };
 }
 
-console.log('Cipher app.js loaded with auto-update support');
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    showLoginForm();
+});

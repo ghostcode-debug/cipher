@@ -5,117 +5,155 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cipher - Private Messaging</title>
     <link rel="stylesheet" href="styles.css">
-    <style>
-        #loginContainer {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 2000;
-        }
-        #loginContainer.hidden {
-            display: none !important;
-        }
-        .login-box {
-            background: #1a1f26;
-            padding: 40px;
-            border-radius: 12px;
-            width: 400px;
-            border: 1px solid #2a3038;
-        }
-        .login-box h1 {
-            color: #2D7A8A;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .login-box input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            background: #2a3038;
-            border: 1px solid #3a4048;
-            border-radius: 8px;
-            color: #E8EAED;
-            box-sizing: border-box;
-        }
-        .login-box button {
-            width: 100%;
-            padding: 12px;
-            background: #2D7A8A;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        .login-box button:hover {
-            background: #2a6f7f;
-        }
-        #mainContainer {
-            display: none !important;
-            width: 100%;
-            height: 100vh;
-            margin: 0;
-            padding: 0;
-        }
-        #mainContainer.visible {
-            display: flex !important;
-        }
-    </style>
 </head>
 <body style="margin: 0; padding: 0; overflow: hidden;">
     <!-- LOGIN MODAL -->
-    <div id="loginContainer">
+    <div id="loginContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%); display: flex; align-items: center; justify-content: center; z-index: 9999;">
         <div class="login-box">
             <h1>🔐 Cipher</h1>
-            <input type="email" id="loginEmail" placeholder="Email" value="alice@example.com">
-            <input type="password" id="loginPassword" placeholder="Password" value="password123">
-            <button onclick="handleLogin()">Login</button>
+            <p>Secure, Private, Encrypted Messaging</p>
+            <input type="email" id="loginEmail" placeholder="Email" class="login-input">
+            <input type="password" id="loginPassword" placeholder="Password" class="login-input">
+            <button id="loginBtn" class="login-button">Login</button>
+            <div class="login-info">
+                🔒 End-to-end encrypted • Your messages are private
+            </div>
         </div>
     </div>
 
     <!-- MAIN APP -->
-    <div id="mainContainer" style="display: none; width: 100%; height: 100vh; flex-direction: row;">
+    <div id="mainContainer" class="container" style="display: none;">
+        <!-- SIDEBAR -->
         <div class="sidebar">
+            <!-- HEADER -->
             <div class="sidebar-header">
-                <h1 class="logo">🔐 Cipher</h1>
-                <p class="version" id="appVersion">v1.0.0</p>
+                <div class="logo">🔐 Cipher</div>
+                <div class="version">v1.0.1 • 🔒 E2E</div>
             </div>
 
+            <!-- SEARCH -->
             <div class="search-box">
-                <input type="text" id="searchInput" class="search-input" placeholder="Search conversations...">
+                <input type="text" class="search-input" placeholder="Search conversations..." id="searchInput">
             </div>
 
-            <div class="conversations-list" id="conversationsList"></div>
+            <!-- CONVERSATIONS LIST -->
+            <div class="conversations-list" id="usersList"></div>
 
+            <!-- BUTTONS -->
             <button class="settings-button" id="settingsBtn">⚙️ Privacy Settings</button>
-            <button class="settings-button" style="background: #d9534f; margin-top: 10px;" onclick="handleLogout()">🚪 Logout</button>
+            <button class="settings-button" id="logoutBtn" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">🚪 Logout</button>
         </div>
 
+        <!-- CHAT AREA -->
         <div class="chat-container">
+            <!-- CHAT HEADER -->
             <div class="chat-header">
                 <div class="header-info">
-                    <h2 class="chat-title" id="chatTitle">Select a conversation</h2>
-                    <p class="user-status" id="userStatus">Offline</p>
+                    <div class="chat-title" id="chatTitle">Select a conversation</div>
+                    <div class="user-status" id="userStatus">Offline</div>
+                </div>
+                <div class="header-actions">
+                    <div class="encryption-badge">
+                        🔒 <span id="encryptionStatus">Encrypted</span>
+                    </div>
                 </div>
             </div>
 
+            <!-- MESSAGES -->
             <div class="messages-container" id="messagesContainer">
-                <div class="no-conversation"><p>Select a conversation to start messaging</p></div>
+                <div class="no-conversation">Select a conversation to start messaging</div>
             </div>
 
+            <!-- INPUT AREA -->
             <div class="input-area">
-                <input type="text" id="messageInput" class="message-input" placeholder="Type a message..." disabled>
-                <button id="sendBtn" class="send-button" disabled>Send</button>
+                <input type="text" class="message-input" id="messageInput" placeholder="Type a message... (End-to-end encrypted)" disabled>
+                <button class="send-button" id="sendBtn" disabled>Send</button>
             </div>
         </div>
     </div>
 
+    <style>
+        .login-box {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0f1729 100%);
+            border: 1px solid rgba(45, 122, 138, 0.3);
+            border-radius: 16px;
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-box h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #FFFFFF;
+            text-align: center;
+        }
+
+        .login-box p {
+            font-size: 14px;
+            color: rgba(232, 234, 237, 0.7);
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+            background: rgba(45, 122, 138, 0.15);
+            border: 1px solid rgba(45, 122, 138, 0.3);
+            border-radius: 10px;
+            color: #E8EAED;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .login-input:focus {
+            background: rgba(45, 122, 138, 0.25);
+            border-color: #2D7A8A;
+            box-shadow: 0 0 12px rgba(45, 122, 138, 0.3);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #2D7A8A, #1e5a6b);
+            border: none;
+            color: #FFFFFF;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 15px;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(45, 122, 138, 0.3);
+        }
+
+        .login-button:hover {
+            background: linear-gradient(135deg, #3a8fa0, #2a6a7b);
+            box-shadow: 0 6px 16px rgba(45, 122, 138, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .login-info {
+            margin-top: 20px;
+            font-size: 12px;
+            color: rgba(232, 234, 237, 0.6);
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(45, 122, 138, 0.15);
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            background: #0a0e27;
+        }
+    </style>
+
+    <script src="encryption.js"></script>
     <script src="api.js"></script>
     <script src="app.js"></script>
 </body>

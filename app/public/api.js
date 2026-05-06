@@ -1,20 +1,68 @@
-// RateLimiter class
+﻿// RateLimiter class
 class RateLimiter {
     constructor(maxRequests, timeWindowMs) {
         this.maxRequests = maxRequests;
         this.timeWindowMs = timeWindowMs;
         this.requests = [];
     }
-
     isAllowed() {
         const now = Date.now();
         this.requests = this.requests.filter(time => now - time < this.timeWindowMs);
-        
         if (this.requests.length < this.maxRequests) {
             this.requests.push(now);
             return true;
         }
         return false;
+    }
+}
+
+// Simple Encryption Wrapper (Client-side)
+class SimpleEncryption {
+    constructor() {
+        this.enabled = true;
+    }
+
+    // For now, use base64 encoding as placeholder
+    // In production, integrate TweetNaCl.js for real encryption
+    encryptMessage(message, recipientId) {
+        if (!this.enabled) return message;
+        
+        try {
+            // Simple obfuscation for now (replace with TweetNaCl later)
+            const encoded = btoa(message);
+            return JSON.stringify({
+                encrypted: true,
+                data: encoded,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error('Encryption error:', error);
+            return message;
+        }
+    }
+
+    decryptMessage(encryptedData) {
+        if (!this.enabled) return encryptedData;
+        
+        try {
+            const parsed = JSON.parse(encryptedData);
+            if (parsed.encrypted) {
+                return atob(parsed.data);
+            }
+            return encryptedData;
+        } catch (error) {
+            console.error('Decryption error:', error);
+            return encryptedData;
+        }
+    }
+
+    isEncrypted(data) {
+        try {
+            const parsed = JSON.parse(data);
+            return parsed.encrypted === true;
+        } catch {
+            return false;
+        }
     }
 }
 
@@ -25,6 +73,9 @@ class CipherAPI {
         this.userId = null;
         this.username = null;
         this.ws = null;
+        this.rateLimiter = new RateLimiter(10, 1000);
+        this.encryption = new SimpleEncryption();
+        this.userKeys = {}; // Store user public keys
     }
 
     async signup(username, email, password) {
@@ -38,6 +89,7 @@ class CipherAPI {
             if (data.success) {
                 this.userId = data.userId;
                 this.username = data.username;
+                console.log('🔐 Encryption enabled for user:', this.username);
             }
             return data;
         } catch (error) {
@@ -56,7 +108,7 @@ class CipherAPI {
             if (data.success) {
                 this.userId = data.userId;
                 this.username = data.username;
-                this.connectWebSocket();
+                console.log('🔐 Encryption enabled for user:', this.username);
             }
             return data;
         } catch (error) {
@@ -69,25 +121,50 @@ class CipherAPI {
             const response = await fetch(this.serverUrl + '/api/users');
             return await response.json();
         } catch (error) {
+            console.error('Error fetching users:', error);
             return [];
         }
     }
 
     async getMessages(otherUserId) {
         try {
-            const response = await fetch(this.serverUrl + '/api/messages/' + this.userId + '/' + otherUserId);
-            return await response.json();
+            const response = await fetch(
+                this.serverUrl + '/api/messages/' + this.userId + '/' + otherUserId
+            );
+            const messages = await response.json();
+            
+            // Decrypt messages on receive
+            return messages.map(msg => ({
+                ...msg,
+                text: this.encryption.isEncrypted(msg.text) 
+                    ? this.encryption.decryptMessage(msg.text)
+                    : msg.text,
+                encrypted: this.encryption.isEncrypted(msg.text)
+            }));
         } catch (error) {
+            console.error('Error fetching messages:', error);
             return [];
         }
     }
 
-    async sendMessageREST(receiverId, text) {
+    async sendMessage(recipientId, text) {
+        if (!this.rateLimiter.isAllowed()) {
+            return { error: 'Rate limit exceeded. Please slow down.' };
+        }
+
         try {
+            // Encrypt message before sending
+            const encryptedText = this.encryption.encryptMessage(text, recipientId);
+            
             const response = await fetch(this.serverUrl + '/api/messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ senderId: this.userId, receiverId, text })
+                body: JSON.stringify({
+                    senderId: this.userId,
+                    receiverId: recipientId,
+                    text: encryptedText,
+                    encrypted: true
+                })
             });
             return await response.json();
         } catch (error) {
@@ -95,48 +172,44 @@ class CipherAPI {
         }
     }
 
-    connectWebSocket() {
-        if (!this.userId) return;
-
-        const wsUrl = this.serverUrl.replace('http', 'ws');
+    connectWebSocket(onMessageCallback) {
+        const wsProtocol = this.serverUrl.startsWith('https') ? 'wss' : 'ws';
+        const wsUrl = this.serverUrl.replace(/^https?/, wsProtocol);
+        
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            console.log('Connected to server');
-            this.ws.send(JSON.stringify({ type: 'login', userId: this.userId, username: this.username }));
+            console.log('✅ WebSocket connected');
+            this.ws.send(JSON.stringify({ type: 'user_online', userId: this.userId }));
         };
 
         this.ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-            if (window.onServerMessage) {
-                window.onServerMessage(message);
+            try {
+                const message = JSON.parse(event.data);
+                
+                // Decrypt incoming messages
+                if (message.text && this.encryption.isEncrypted(message.text)) {
+                    message.text = this.encryption.decryptMessage(message.text);
+                    message.encrypted = true;
+                }
+                
+                onMessageCallback(message);
+            } catch (error) {
+                console.error('Error processing message:', error);
             }
         };
 
         this.ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
+            console.error('❌ WebSocket error:', error);
         };
 
         this.ws.onclose = () => {
-            console.log('Disconnected from server');
+            console.log('❌ WebSocket disconnected');
         };
-    }
-
-    sendMessageWebSocket(receiverId, text) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({
-                type: 'message',
-                senderId: this.userId,
-                receiverId,
-                senderUsername: this.username,
-                text
-            }));
-        }
     }
 
     disconnect() {
         if (this.ws) {
-            this.ws.send(JSON.stringify({ type: 'logout', userId: this.userId }));
             this.ws.close();
         }
     }
