@@ -5,102 +5,125 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cipher - Private Messaging</title>
     <link rel="stylesheet" href="styles.css">
-</head>
-<body style="margin: 0; padding: 0; overflow: hidden;">
-    <!-- LOGIN MODAL -->
-    <div id="loginContainer" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%); display: flex; align-items: center; justify-content: center; z-index: 9999;">
-        <div class="login-box">
-            <h1>🔐 Cipher</h1>
-            <p>Secure, Private, Encrypted Messaging</p>
-            <input type="email" id="loginEmail" placeholder="Email" class="login-input">
-            <input type="password" id="loginPassword" placeholder="Password" class="login-input">
-            <button id="loginBtn" class="login-button">Login</button>
-            <div class="login-info">
-                🔒 End-to-end encrypted • Your messages are private
-            </div>
-        </div>
-    </div>
-
-    <!-- MAIN APP -->
-    <div id="mainContainer" class="container" style="display: none;">
-        <!-- SIDEBAR -->
-        <div class="sidebar">
-            <!-- HEADER -->
-            <div class="sidebar-header">
-                <div class="logo">🔐 Cipher</div>
-                <div class="version">v1.0.1 • 🔒 E2E</div>
-            </div>
-
-            <!-- SEARCH -->
-            <div class="search-box">
-                <input type="text" class="search-input" placeholder="Search conversations..." id="searchInput">
-            </div>
-
-            <!-- CONVERSATIONS LIST -->
-            <div class="conversations-list" id="usersList"></div>
-
-            <!-- BUTTONS -->
-            <button class="settings-button" id="settingsBtn">⚙️ Privacy Settings</button>
-            <button class="settings-button" id="logoutBtn" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">🚪 Logout</button>
-        </div>
-
-        <!-- CHAT AREA -->
-        <div class="chat-container">
-            <!-- CHAT HEADER -->
-            <div class="chat-header">
-                <div class="header-info">
-                    <div class="chat-title" id="chatTitle">Select a conversation</div>
-                    <div class="user-status" id="userStatus">Offline</div>
-                </div>
-                <div class="header-actions">
-                    <div class="encryption-badge">
-                        🔒 <span id="encryptionStatus">Encrypted</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- MESSAGES -->
-            <div class="messages-container" id="messagesContainer">
-                <div class="no-conversation">Select a conversation to start messaging</div>
-            </div>
-
-            <!-- INPUT AREA -->
-            <div class="input-area">
-                <input type="text" class="message-input" id="messageInput" placeholder="Type a message... (End-to-end encrypted)" disabled>
-                <button class="send-button" id="sendBtn" disabled>Send</button>
-            </div>
-        </div>
-    </div>
-
     <style>
-        .login-box {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            color: #E8EAED;
+        }
+
+        #loginContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #0a0e27 0%, #16213e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        #loginContainer.hidden {
+            display: none !important;
+        }
+
+        .auth-box {
             background: linear-gradient(135deg, #1a1f3a 0%, #0f1729 100%);
             border: 1px solid rgba(45, 122, 138, 0.3);
             border-radius: 16px;
             padding: 40px;
             width: 100%;
-            max-width: 400px;
+            max-width: 420px;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
 
-        .login-box h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-            color: #FFFFFF;
-            text-align: center;
-        }
-
-        .login-box p {
-            font-size: 14px;
-            color: rgba(232, 234, 237, 0.7);
+        .auth-header {
             text-align: center;
             margin-bottom: 30px;
         }
 
-        .login-input {
+        .auth-header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #FFFFFF;
+        }
+
+        .auth-header p {
+            font-size: 14px;
+            color: rgba(232, 234, 237, 0.7);
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid rgba(45, 122, 138, 0.2);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            color: rgba(232, 234, 237, 0.6);
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .auth-tab.active {
+            color: #2D7A8A;
+            border-bottom-color: #2D7A8A;
+        }
+
+        .auth-tab:hover {
+            color: #E8EAED;
+        }
+
+        .auth-form {
+            display: none;
+        }
+
+        .auth-form.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(232, 234, 237, 0.8);
+            margin-bottom: 6px;
+        }
+
+        .password-group {
+            position: relative;
+        }
+
+        .form-input {
             width: 100%;
             padding: 12px 16px;
-            margin-bottom: 12px;
             background: rgba(45, 122, 138, 0.15);
             border: 1px solid rgba(45, 122, 138, 0.3);
             border-radius: 10px;
@@ -110,13 +133,113 @@
             transition: all 0.3s ease;
         }
 
-        .login-input:focus {
+        .form-input:focus {
             background: rgba(45, 122, 138, 0.25);
             border-color: #2D7A8A;
             box-shadow: 0 0 12px rgba(45, 122, 138, 0.3);
         }
 
-        .login-button {
+        .form-input.error {
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .form-input.success {
+            border-color: #4ade80;
+            background: rgba(74, 222, 128, 0.1);
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #2D7A8A;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 8px;
+            transition: color 0.2s ease;
+            margin-top: -12px;
+        }
+
+        .password-toggle:hover {
+            color: #3a8fa0;
+        }
+
+        .form-error {
+            font-size: 12px;
+            color: #ef4444;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-error.show {
+            display: block;
+        }
+
+        .form-success {
+            font-size: 12px;
+            color: #4ade80;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .form-success.show {
+            display: block;
+        }
+
+        .password-strength {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .password-strength.show {
+            display: block;
+        }
+
+        .strength-bar {
+            height: 4px;
+            background: rgba(45, 122, 138, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            transition: all 0.3s ease;
+            border-radius: 2px;
+        }
+
+        .strength-fill.weak {
+            width: 25%;
+            background: #ef4444;
+        }
+
+        .strength-fill.fair {
+            width: 50%;
+            background: #f97316;
+        }
+
+        .strength-fill.good {
+            width: 75%;
+            background: #eab308;
+        }
+
+        .strength-fill.strong {
+            width: 100%;
+            background: #4ade80;
+        }
+
+        .strength-text {
+            font-size: 12px;
+            color: rgba(232, 234, 237, 0.6);
+        }
+
+        .auth-button {
             width: 100%;
             padding: 12px 16px;
             background: linear-gradient(135deg, #2D7A8A, #1e5a6b);
@@ -126,18 +249,95 @@
             cursor: pointer;
             font-weight: 600;
             font-size: 15px;
-            margin-top: 10px;
+            margin-top: 16px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(45, 122, 138, 0.3);
         }
 
-        .login-button:hover {
+        .auth-button:hover:not(:disabled) {
             background: linear-gradient(135deg, #3a8fa0, #2a6a7b);
             box-shadow: 0 6px 16px rgba(45, 122, 138, 0.4);
             transform: translateY(-2px);
         }
 
-        .login-info {
+        .auth-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-button.loading {
+            position: relative;
+        }
+
+        .auth-button.loading::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            top: 50%;
+            left: 12px;
+            margin-top: -8px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #FFFFFF;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .auth-button.loading span {
+            margin-left: 24px;
+        }
+
+        .success-message {
+            display: none;
+            padding: 12px 16px;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 10px;
+            color: #4ade80;
+            font-size: 13px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .success-message.show {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            margin-top: 12px;
+        }
+
+        .form-checkbox input {
+            cursor: pointer;
+        }
+
+        .form-checkbox label {
+            cursor: pointer;
+            color: rgba(232, 234, 237, 0.7);
+        }
+
+        .auth-footer {
             margin-top: 20px;
             font-size: 12px;
             color: rgba(232, 234, 237, 0.6);
@@ -152,9 +352,123 @@
             background: #0a0e27;
         }
     </style>
+</head>
+<body style="margin: 0; padding: 0; overflow: hidden;">
+    <!-- AUTH MODAL -->
+    <div id="loginContainer">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1>🔐 Cipher</h1>
+                <p>Secure, Private, Encrypted Messaging</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Login</button>
+                <button class="auth-tab" data-tab="signup">Create Account</button>
+            </div>
+
+            <!-- LOGIN FORM -->
+            <form class="auth-form active" id="loginForm" data-form="login">
+                <div class="success-message" id="loginSuccessMessage">✓ Login successful! Redirecting...</div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="loginEmail" class="form-input" placeholder="you@example.com" required autofocus>
+                    <div class="form-error" id="loginEmailError"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="password-group">
+                        <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+                        <button type="button" class="password-toggle" id="loginPasswordToggle">👁</button>
+                    </div>
+                    <div class="form-error" id="loginPasswordError"></div>
+                </div>
+                <div class="form-checkbox">
+                    <input type="checkbox" id="rememberMe" name="rememberMe">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+                <button type="submit" class="auth-button" id="loginButton"><span>Login</span></button>
+                <div class="auth-footer">🔒 End-to-end encrypted • Your messages are private</div>
+            </form>
+
+            <!-- SIGNUP FORM -->
+            <form class="auth-form" id="signupForm" data-form="signup">
+                <div class="success-message" id="signupSuccessMessage">✓ Account created! Logging in...</div>
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="signupUsername" class="form-input" placeholder="john_doe" required>
+                    <div class="form-error" id="signupUsernameError"></div>
+                    <div class="form-success" id="signupUsernameSuccess"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" id="signupEmail" class="form-input" placeholder="you@example.com" required>
+                    <div class="form-error" id="signupEmailError"></div>
+                    <div class="form-success" id="signupEmailSuccess"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <div class="password-group">
+                        <input type="password" id="signupPassword" class="form-input" placeholder="••••••••" required>
+                        <button type="button" class="password-toggle" id="signupPasswordToggle">👁</button>
+                    </div>
+                    <div class="password-strength" id="passwordStrength">
+                        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+                        <div class="strength-text" id="strengthText">Password strength: Weak</div>
+                    </div>
+                    <div class="form-error" id="signupPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password</label>
+                    <div class="password-group">
+                        <input type="password" id="signupPasswordConfirm" class="form-input" placeholder="••••••••" required>
+                        <button type="button" class="password-toggle" id="signupPasswordConfirmToggle">👁</button>
+                    </div>
+                    <div class="form-error" id="signupPasswordConfirmError"></div>
+                </div>
+                <button type="submit" class="auth-button" id="signupButton"><span>Create Account</span></button>
+                <div class="auth-footer">🔒 End-to-end encrypted • Your messages are private</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="mainContainer" class="container" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">🔐 Cipher</div>
+                <div class="version">v1.0.1 • 🔒 E2E</div>
+            </div>
+            <div class="search-box">
+                <input type="text" class="search-input" placeholder="Search conversations..." id="searchInput">
+            </div>
+            <div class="conversations-list" id="usersList"></div>
+            <button class="settings-button" id="settingsBtn">⚙️ Privacy Settings</button>
+            <button class="settings-button" id="logoutBtn" style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); color: #ef4444;">🚪 Logout</button>
+        </div>
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="header-info">
+                    <div class="chat-title" id="chatTitle">Select a conversation</div>
+                    <div class="user-status" id="userStatus">Offline</div>
+                </div>
+                <div class="header-actions">
+                    <div class="encryption-badge">🔒 <span id="encryptionStatus">Encrypted</span></div>
+                </div>
+            </div>
+            <div class="messages-container" id="messagesContainer">
+                <div class="no-conversation">Select a conversation to start messaging</div>
+            </div>
+            <div class="input-area">
+                <input type="text" class="message-input" id="messageInput" placeholder="Type a message... (End-to-end encrypted)" disabled>
+                <button class="send-button" id="sendBtn" disabled>Send</button>
+            </div>
+        </div>
+    </div>
 
     <script src="encryption.js"></script>
     <script src="api.js"></script>
+    <script src="auth.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
