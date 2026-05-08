@@ -143,3 +143,73 @@ function setupEventListeners() {
 document.addEventListener('DOMContentLoaded', () => {
     showLoginForm();
 });
+
+
+// FILE UPLOAD HANDLER
+function handleFileUpload(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const fileData = {
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: e.target.result.split(',')[1]
+        };
+        
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.textContent = 'Uploading...';
+        sendBtn.disabled = true;
+        
+        fetch('http://localhost:5000/api/messages/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                senderId: currentUserId,
+                receiverId: currentChatUserId,
+                file: fileData
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const fileMsg = '📁 ' + file.name + ' (' + formatFileSize(file.size) + ')';
+                addMessage(currentUserId, fileMsg);
+            }
+        })
+        .catch(err => console.error('Upload error:', err))
+        .finally(() => {
+            sendBtn.textContent = 'Send';
+            sendBtn.disabled = false;
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+}
+
+// FILE INPUT EVENT
+document.getElementById('fileBtn')?.addEventListener('click', () => {
+    const fileInput = document.getElementById('fileInput');
+    if (!fileInput) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.id = 'fileInput';
+        input.style.display = 'none';
+        input.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileUpload(e.target.files[0]);
+                input.value = '';
+            }
+        });
+        document.body.appendChild(input);
+        input.click();
+    } else {
+        fileInput.click();
+    }
+});
