@@ -1,4 +1,4 @@
-﻿// RateLimiter class
+// RateLimiter class
 class RateLimiter {
     constructor(maxRequests, timeWindowMs) {
         this.maxRequests = maxRequests;
@@ -68,7 +68,7 @@ class SimpleEncryption {
 
 // API Client
 class CipherAPI {
-    constructor(serverUrl = 'https://cf012452-126b-48f8-9e73-d8c1ef3c442a-00-1a5u8zblel459.kirk.replit.dev') {
+    constructor(serverUrl = 'http://localhost:5000') {
         this.serverUrl = serverUrl;
         this.userId = null;
         this.username = null;
@@ -89,7 +89,7 @@ class CipherAPI {
             if (data.success) {
                 this.userId = data.userId;
                 this.username = data.username;
-                console.log('🔐 Encryption enabled for user:', this.username);
+                console.log('?? Encryption enabled for user:', this.username);
             }
             return data;
         } catch (error) {
@@ -108,7 +108,7 @@ class CipherAPI {
             if (data.success) {
                 this.userId = data.userId;
                 this.username = data.username;
-                console.log('🔐 Encryption enabled for user:', this.username);
+                console.log('?? Encryption enabled for user:', this.username);
             }
             return data;
         } catch (error) {
@@ -179,7 +179,7 @@ class CipherAPI {
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-            console.log('✅ WebSocket connected');
+            console.log('? WebSocket connected');
             this.ws.send(JSON.stringify({ type: 'user_online', userId: this.userId }));
         };
 
@@ -200,11 +200,11 @@ class CipherAPI {
         };
 
         this.ws.onerror = (error) => {
-            console.error('❌ WebSocket error:', error);
+            console.error('? WebSocket error:', error);
         };
 
         this.ws.onclose = () => {
-            console.log('❌ WebSocket disconnected');
+            console.log('? WebSocket disconnected');
         };
     }
 
@@ -215,4 +215,4 @@ class CipherAPI {
     }
 }
 
-const api = new CipherAPI('https://cf012452-126b-48f8-9e73-d8c1ef3c442a-00-1a5u8zblel459.kirk.replit.dev');
+const api = new CipherAPI('http://localhost:5000');

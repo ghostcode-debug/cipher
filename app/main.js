@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+﻿const { app, BrowserWindow, ipcMain } = require('electron');
 const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
@@ -29,7 +29,7 @@ function createWindow() {
 
     mainWindow.removeMenu();
     mainWindow.loadFile(path.join(__dirname, 'public/index.html'));
-    // mainWindow.webContents.openDevTools(); // Disabled in production
+    mainWindow.webContents.openDevTools();; // Disabled in production
 
     mainWindow.on('closed', () => {
         mainWindow = null;
@@ -177,3 +177,5 @@ ipcMain.handle('restart-app', async () => {
 });
 
 console.log('Cipher Desktop App - Main Process Started');
+
+

@@ -45,13 +45,7 @@ async function loadUsers() {
         if (user.id !== api.userId) {
             const userEl = document.createElement('div');
             userEl.className = 'conversation-item';
-            userEl.innerHTML = 
-                <div class="conversation-avatar">\</div>
-                <div class="conversation-info">
-                    <div class="conversation-name">\</div>
-                    <div class="conversation-preview">Click to chat</div>
-                </div>
-            ;
+            userEl.innerHTML = \<div class="conversation-avatar"></div><div class="conversation-info"><div class="conversation-name">${user.username}</div><div class="conversation-preview">Click to chat</div></div>\;
             userEl.onclick = () => selectUser(user);
             usersList.appendChild(userEl);
         }
@@ -85,12 +79,7 @@ async function loadMessages(userId) {
         
         const encryptionBadge = msg.encrypted ? '🔒' : '';
         
-        messageEl.innerHTML = 
-            <div class="message-time">\</div>
-            <div class="message-bubble">
-                \ \
-            </div>
-        ;
+        messageEl.innerHTML = \<div class="message-time">\</div><div class="message-bubble">\ \</div>\;
         
         container.appendChild(messageEl);
     });
@@ -213,3 +202,5 @@ document.getElementById('fileBtn')?.addEventListener('click', () => {
         fileInput.click();
     }
 });
+
+
