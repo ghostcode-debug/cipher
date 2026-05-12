@@ -1,92 +1,113 @@
-﻿// Auth Management with Enhanced UX
-class AuthManager {
+﻿class AuthManager {
     constructor() {
-        this.currentTab = 'login';
-        this.setupEventListeners();
+        this.currentForm = 'login';
+        this.setupTabs();
+        this.setupLoginForm();
+        this.setupSignupForm();
         this.loadRememberedEmail();
     }
 
-    setupEventListeners() {
+    setupTabs() {
         document.querySelectorAll('.auth-tab').forEach(tab => {
             tab.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.switchTab(tab.dataset.tab);
+                const formName = e.target.dataset.tab;
+                this.switchForm(formName);
             });
         });
+    }
 
-        // Password toggles
+    switchForm(formName) {
+        document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        
+        document.querySelector(`[data-form="${formName}"]`).classList.add('active');
+        document.querySelector(`[data-tab="${formName}"]`).classList.add('active');
+        this.currentForm = formName;
+    }
+
+    setupLoginForm() {
+        const form = document.getElementById('loginForm');
+        const emailInput = document.getElementById('loginEmail');
+        const passwordInput = document.getElementById('loginPassword');
+        const submitBtn = document.getElementById('loginButton');
+
         document.getElementById('loginPasswordToggle').addEventListener('click', (e) => {
             e.preventDefault();
-            this.togglePasswordVisibility('loginPassword');
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            e.target.textContent = isPassword ? '🙈' : '👁';
         });
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleLogin(emailInput.value, passwordInput.value, submitBtn);
+        });
+    }
+
+    setupSignupForm() {
+        const form = document.getElementById('signupForm');
+        const usernameInput = document.getElementById('signupUsername');
+        const emailInput = document.getElementById('signupEmail');
+        const passwordInput = document.getElementById('signupPassword');
+        const passwordConfirmInput = document.getElementById('signupPasswordConfirm');
+        const submitBtn = document.getElementById('signupButton');
+
+        passwordInput.addEventListener('input', () => {
+            this.checkPasswordStrength(passwordInput.value);
+        });
+
         document.getElementById('signupPasswordToggle').addEventListener('click', (e) => {
             e.preventDefault();
-            this.togglePasswordVisibility('signupPassword');
+            const isPassword = passwordInput.type === 'password';
+            passwordInput.type = isPassword ? 'text' : 'password';
+            e.target.textContent = isPassword ? '🙈' : '👁';
         });
+
         document.getElementById('signupPasswordConfirmToggle').addEventListener('click', (e) => {
             e.preventDefault();
-            this.togglePasswordVisibility('signupPasswordConfirm');
+            const isPassword = passwordConfirmInput.type === 'password';
+            passwordConfirmInput.type = isPassword ? 'text' : 'password';
+            e.target.textContent = isPassword ? '🙈' : '👁';
         });
 
-        document.getElementById('loginForm').addEventListener('submit', (e) => this.handleLogin(e));
-        document.getElementById('signupForm').addEventListener('submit', (e) => this.handleSignup(e));
-
-        document.getElementById('signupUsername').addEventListener('input', () => this.validateUsername());
-        document.getElementById('signupEmail').addEventListener('input', () => this.validateEmail());
-        document.getElementById('signupPassword').addEventListener('input', () => this.validatePassword());
-        document.getElementById('signupPasswordConfirm').addEventListener('input', () => this.validatePasswordConfirm());
-
-        document.getElementById('rememberMe').addEventListener('change', (e) => {
-            if (e.target.checked) {
-                localStorage.setItem('rememberEmail', document.getElementById('loginEmail').value);
-            } else {
-                localStorage.removeItem('rememberEmail');
-            }
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleSignup(usernameInput.value, emailInput.value, passwordInput.value, passwordConfirmInput.value, submitBtn);
         });
     }
 
-    togglePasswordVisibility(fieldId) {
-        const field = document.getElementById(fieldId);
-        const toggle = document.querySelector([id="\Toggle"]);
-        if (field.type === 'password') {
-            field.type = 'text';
-            toggle.textContent = '🙈';
+    checkPasswordStrength(password) {
+        const strengthContainer = document.getElementById('passwordStrength');
+        const strengthFill = document.getElementById('strengthFill');
+        const strengthText = document.getElementById('strengthText');
+
+        let score = 0;
+        if (password.length >= 8) score++;
+        if (password.length >= 12) score++;
+        if (/[a-z]/.test(password)) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/\d/.test(password)) score++;
+        if (/[@#$%^&*]/.test(password)) score++;
+
+        strengthContainer.classList.add('show');
+        strengthFill.className = 'strength-fill';
+
+        if (score <= 2) {
+            strengthFill.classList.add('weak');
+            strengthText.textContent = 'Password strength: Weak 🔴';
+        } else if (score <= 3) {
+            strengthFill.classList.add('fair');
+            strengthText.textContent = 'Password strength: Fair 🟠';
+        } else if (score <= 4) {
+            strengthFill.classList.add('good');
+            strengthText.textContent = 'Password strength: Good 🟡';
         } else {
-            field.type = 'password';
-            toggle.textContent = '👁';
+            strengthFill.classList.add('strong');
+            strengthText.textContent = 'Password strength: Strong 🟢';
         }
     }
 
-    loadRememberedEmail() {
-        const remembered = localStorage.getItem('rememberEmail');
-        if (remembered) {
-            document.getElementById('loginEmail').value = remembered;
-            document.getElementById('rememberMe').checked = true;
-        }
-    }
-
-    switchTab(tab) {
-        this.currentTab = tab;
-        document.querySelectorAll('.auth-tab').forEach(t => {
-            t.classList.toggle('active', t.dataset.tab === tab);
-        });
-        document.querySelectorAll('.auth-form').forEach(f => {
-            f.classList.toggle('active', f.dataset.form === tab);
-        });
-        document.querySelectorAll('.form-error').forEach(e => e.classList.remove('show'));
-        document.querySelectorAll('.form-input').forEach(i => i.classList.remove('error', 'success'));
-        setTimeout(() => {
-            if (tab === 'login') document.getElementById('loginEmail').focus();
-            else document.getElementById('signupUsername').focus();
-        }, 100);
-    }
-
-    async handleLogin(e) {
-        e.preventDefault();
-        const email = document.getElementById('loginEmail').value.trim();
-        const password = document.getElementById('loginPassword').value;
-        const button = document.getElementById('loginButton');
-
+    async handleLogin(email, password, button) {
         if (!email || !password) {
             this.showError('loginEmailError', '⚠️ Please fill in all fields');
             return;
@@ -98,32 +119,43 @@ class AuthManager {
         try {
             const result = await api.login(email, password);
             if (result.success) {
+                if (document.getElementById('rememberMe').checked) {
+                    localStorage.setItem('rememberedEmail', email);
+                }
                 document.getElementById('loginSuccessMessage').classList.add('show');
                 setTimeout(() => {
                     document.getElementById('loginContainer').classList.add('hidden');
                     document.getElementById('mainContainer').style.display = 'flex';
-                    initializeApp();
+                    setTimeout(() => {
+                        initializeApp();
+                    }, 100);
                 }, 800);
             } else {
                 this.showError('loginEmailError', '❌ ' + (result.error || 'Login failed'));
             }
         } catch (error) {
-            this.showError('loginEmailError', '❌ Network error. Please try again.');
+            this.showError('loginEmailError', '❌ Connection error: ' + error.message);
         } finally {
             button.classList.remove('loading');
             button.disabled = false;
         }
     }
 
-    async handleSignup(e) {
-        e.preventDefault();
-        const username = document.getElementById('signupUsername').value.trim();
-        const email = document.getElementById('signupEmail').value.trim();
-        const password = document.getElementById('signupPassword').value;
-        const passwordConfirm = document.getElementById('signupPasswordConfirm').value;
-        const button = document.getElementById('signupButton');
+    async handleSignup(username, email, password, passwordConfirm, button) {
+        if (!username || !email || !password || !passwordConfirm) {
+            this.showError('signupUsernameError', '⚠️ Please fill in all fields');
+            return;
+        }
 
-        if (!this.validateAll(username, email, password, passwordConfirm)) return;
+        if (password !== passwordConfirm) {
+            this.showError('signupPasswordConfirmError', '❌ Passwords do not match');
+            return;
+        }
+
+        if (password.length < 8) {
+            this.showError('signupPasswordError', '❌ Password must be at least 8 characters');
+            return;
+        }
 
         button.classList.add('loading');
         button.disabled = true;
@@ -132,158 +164,39 @@ class AuthManager {
             const result = await api.signup(username, email, password);
             if (result.success) {
                 document.getElementById('signupSuccessMessage').classList.add('show');
-                setTimeout(async () => {
-                    const loginResult = await api.login(email, password);
-                    if (loginResult.success) {
-                        document.getElementById('loginContainer').classList.add('hidden');
-                        document.getElementById('mainContainer').style.display = 'flex';
+                setTimeout(() => {
+                    document.getElementById('loginContainer').classList.add('hidden');
+                    document.getElementById('mainContainer').style.display = 'flex';
+                    setTimeout(() => {
                         initializeApp();
-                    }
-                }, 800);
+                    }, 100);
+                }, 1500);
             } else {
-                this.showError('signupEmailError', '❌ ' + (result.error || 'Signup failed'));
+                this.showError('signupUsernameError', '❌ ' + (result.error || 'Signup failed'));
             }
         } catch (error) {
-            this.showError('signupEmailError', '❌ Network error. Please try again.');
+            this.showError('signupUsernameError', '❌ Connection error: ' + error.message);
         } finally {
             button.classList.remove('loading');
             button.disabled = false;
         }
     }
 
-    validateUsername() {
-        const input = document.getElementById('signupUsername');
-        const value = input.value.trim();
-        const error = document.getElementById('signupUsernameError');
-        const success = document.getElementById('signupUsernameSuccess');
-
-        error.classList.remove('show');
-        success.classList.remove('show');
-        input.classList.remove('error', 'success');
-
-        if (!value) return true;
-        if (value.length < 3) {
-            this.showFieldError(input, error, '⚠️ Min 3 characters');
-            return false;
-        }
-        if (value.length > 20) {
-            this.showFieldError(input, error, '⚠️ Max 20 characters');
-            return false;
-        }
-        if (!/^[a-zA-Z0-9_]+\$/.test(value + '$')) {
-            this.showFieldError(input, error, '⚠️ Letters, numbers, underscore only');
-            return false;
-        }
-        this.showFieldSuccess(input, success, '✓ Available');
-        return true;
-    }
-
-    validateEmail() {
-        const input = document.getElementById('signupEmail');
-        const value = input.value.trim();
-        const error = document.getElementById('signupEmailError');
-        const success = document.getElementById('signupEmailSuccess');
-
-        error.classList.remove('show');
-        success.classList.remove('show');
-        input.classList.remove('error', 'success');
-
-        if (!value) return true;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+\$/;
-        if (!emailRegex.test(value + '$')) {
-            this.showFieldError(input, error, '⚠️ Invalid email');
-            return false;
-        }
-        this.showFieldSuccess(input, success, '✓ Valid');
-        return true;
-    }
-
-    validatePassword() {
-        const input = document.getElementById('signupPassword');
-        const value = input.value;
-        const strength = document.getElementById('passwordStrength');
-        const fill = document.getElementById('strengthFill');
-        const text = document.getElementById('strengthText');
-
-        if (!value) {
-            strength.classList.remove('show');
-            return true;
-        }
-
-        strength.classList.add('show');
-        let score = 0;
-        if (value.length >= 8) score++;
-        if (value.length >= 12) score++;
-        if (/[a-z]/.test(value)) score++;
-        if (/[A-Z]/.test(value)) score++;
-        if (/[0-9]/.test(value)) score++;
-        if (/[@#\$%^&*]/.test(value)) score++;
-
-        fill.className = 'strength-fill';
-        if (score <= 2) {
-            fill.classList.add('weak');
-            text.textContent = '🔴 Weak';
-            return false;
-        } else if (score <= 3) {
-            fill.classList.add('fair');
-            text.textContent = '🟠 Fair';
-            return false;
-        } else if (score <= 4) {
-            fill.classList.add('good');
-            text.textContent = '🟡 Good';
-            return false;
-        } else {
-            fill.classList.add('strong');
-            text.textContent = '🟢 Strong';
-            return true;
+    showError(elementId, message) {
+        const errorEl = document.getElementById(elementId);
+        if (errorEl) {
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
         }
     }
 
-    validatePasswordConfirm() {
-        const input = document.getElementById('signupPasswordConfirm');
-        const password = document.getElementById('signupPassword').value;
-        const error = document.getElementById('signupPasswordConfirmError');
-
-        error.classList.remove('show');
-        input.classList.remove('error', 'success');
-
-        if (!input.value) return true;
-        if (input.value !== password) {
-            this.showFieldError(input, error, '⚠️ Passwords don\'t match');
-            return false;
+    loadRememberedEmail() {
+        const remembered = localStorage.getItem('rememberedEmail');
+        if (remembered) {
+            document.getElementById('loginEmail').value = remembered;
+            document.getElementById('rememberMe').checked = true;
         }
-        input.classList.add('success');
-        return true;
-    }
-
-    validateAll(username, email, password, passwordConfirm) {
-        let valid = true;
-        if (!this.validateUsername()) valid = false;
-        if (!this.validateEmail()) valid = false;
-        if (!this.validatePassword()) valid = false;
-        if (!this.validatePasswordConfirm()) valid = false;
-        return valid;
-    }
-
-    showFieldError(input, errorEl, message) {
-        input.classList.add('error');
-        errorEl.textContent = message;
-        errorEl.classList.add('show');
-    }
-
-    showFieldSuccess(input, successEl, message) {
-        input.classList.add('success');
-        successEl.textContent = message;
-        successEl.classList.add('show');
-    }
-
-    showError(fieldId, message) {
-        const error = document.getElementById(fieldId);
-        error.textContent = message;
-        error.classList.add('show');
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new AuthManager();
-});
+const authManager = new AuthManager();

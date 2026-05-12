@@ -471,3 +471,26 @@ body {
     font-size: 16px;
   }
 }
+
+/* File Button */
+.file-button {
+    background: rgba(45, 122, 138, 0.2);
+    border: 1px solid rgba(45, 122, 138, 0.3);
+    color: #2D7A8A;
+    border-radius: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.2s ease;
+    margin-right: 8px;
+}
+
+.file-button:hover {
+    background: rgba(45, 122, 138, 0.3);
+    border-color: #2D7A8A;
+}
+
+.file-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
