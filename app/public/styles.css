@@ -494,3 +494,8 @@ body {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.input-area { display: flex; gap: 8px; }
+.file-button { background: rgba(45, 122, 138, 0.2); border: 1px solid rgba(45, 122, 138, 0.3); color: #2D7A8A; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-size: 18px; }
+.file-button:hover { background: rgba(45, 122, 138, 0.3); }
+.file-button:disabled { opacity: 0.5; }

@@ -111,3 +111,51 @@ function setupEventListeners() {
 }
 
 console.log('app.js loaded');
+
+// FILE UPLOAD HANDLER
+document.getElementById('fileBtn').addEventListener('click', () => {
+    if (!selectedUser) {
+        alert('Please select a user first');
+        return;
+    }
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            uploadFile(file);
+        }
+    };
+    input.click();
+});
+
+async function uploadFile(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const base64 = e.target.result.split(',')[1];
+        try {
+            const response = await fetch('http://localhost:5000/api/messages/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    senderId: api.userId,
+                    receiverId: selectedUser.id,
+                    file: {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: base64
+                    }
+                })
+            });
+            const result = await response.json();
+            if (result.success) {
+                await loadMessages(selectedUser.id);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Failed to upload file');
+        }
+    };
+    reader.readAsDataURL(file);
+}
